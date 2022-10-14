@@ -1,5 +1,5 @@
 
-all: format
+all:
 	@dune build @all
 
 format:

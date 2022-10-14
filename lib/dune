@@ -1,2 +1,3 @@
 (library
- (name mini_dalle))
+ (name mini_dalle)
+ (libraries base torch torch.core))
