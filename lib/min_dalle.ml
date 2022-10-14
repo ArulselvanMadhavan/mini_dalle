@@ -1,3 +1,7 @@
+open Cohttp_lwt_unix
+open Cohttp
+open Lwt
+
 type t =
   { models_root : string
   ; dtype : [ `f32 | `f16 ] option
@@ -12,8 +16,8 @@ type t =
   ; glu_embed_count : int
   ; text_vocab_count : int
   ; image_vocab_count : int
-  ; vocab_path: string
-  ; merges_path: string
+  ; vocab_path : string
+  ; merges_path : string
   ; encoder_params_path : string
   ; decoder_params_path : string
   ; detoker_params_path : string
@@ -28,9 +32,34 @@ type 'a with_config =
   -> ?is_verbose:bool
   -> 'a
 
+let exec_command cmd =
+  let result = Sys.command cmd in
+  if result != 0 then
+    let err = Sys_error (cmd ^ " command failed") in
+    raise err
+  else
+    ()
+
+let mkdir_with_path = "mkdir -p "
+  
 let check_and_create_dirs dalle_path vqgan_path =
-  if Sys.file_exists dalle_path then () else Sys.mkdir dalle_path 777;
-  if Sys.file_exists vqgan_path then () else Sys.mkdir vqgan_path 777
+  if Sys.file_exists dalle_path then () else exec_command @@ mkdir_with_path ^ dalle_path;
+  if Sys.file_exists vqgan_path then () else exec_command @@ mkdir_with_path ^ vqgan_path
+;;
+
+let min_dalle_repo = "https://huggingface.co/kuprel/min-dalle/resolve/main/"
+let image_token_count = 256
+
+let init_tokenizer () =
+  Client.get (Uri.of_string @@ min_dalle_repo ^ "config.json")
+  >>= fun (resp, body) ->
+  let code = resp |> Response.status |> Code.code_of_status in
+  Printf.printf "Resp code:%d\n" code;
+  body
+  |> Cohttp_lwt.Body.to_string
+  >|= fun body ->
+  Printf.printf "Body of length: %d\n" (String.length body);
+  body
 ;;
 
 let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t =
@@ -52,7 +81,6 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t =
   let encoder_params_path = Filename.concat dalle_path "encoder.pt" in
   let decoder_params_path = Filename.concat dalle_path "decoder.pt" in
   let detoker_params_path = Filename.concat vqgan_path "detoker.pt" in
-  
   { models_root
   ; dtype
   ; device
@@ -76,5 +104,28 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t =
 
 let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
   let m = mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () in
-  m
+  print_string m.detoker_params_path;
+  print_string m.decoder_params_path;
+  print_string m.encoder_params_path;
+  print_string m.merges_path;
+  print_string m.vocab_path;
+  print_int m.image_vocab_count;
+  print_int m.text_token_count;
+  print_int m.glu_embed_count;
+  print_int m.embed_count;
+  print_int m.attention_head_count;
+  print_int m.text_token_count;
+  print_int m.layer_count;
+  print_int m.text_vocab_count;
+  Printf.printf "%B\n" @@ Option.value m.is_verbose ~default:true;
+  Printf.printf "%B\n" @@ Option.value m.is_reusable ~default:true;
+  Printf.printf "%B\n" m.is_mega;
+  print_int @@ Option.value m.device ~default:0;
+  print_int image_token_count;
+  print_string m.models_root;
+  (match Option.value m.dtype ~default:(`f32) with
+  | `f16 -> print_string "f16"
+  | `f32 -> print_string "f32");
+  let tok_init = init_tokenizer () in
+  tok_init >|= fun _body -> m
 ;;

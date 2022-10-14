@@ -9,4 +9,4 @@ type 'a with_config =
   -> ?is_verbose:bool
   -> 'a
 
-val make : (unit -> t) with_config
+val make : (unit -> t Lwt.t) with_config

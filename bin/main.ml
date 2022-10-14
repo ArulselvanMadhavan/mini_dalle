@@ -1,6 +1,7 @@
 open Mini_dalle
 
 let () =
-  let _ = Min_dalle.make () in
+  let m = Min_dalle.make () in
+  let _m = Lwt_main.run m in
   print_string "done"
 ;;
