@@ -1,0 +1,4 @@
+(executable
+ (public_name mini_dalle)
+ (name main)
+ (libraries mini_dalle))
