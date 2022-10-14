@@ -50,16 +50,20 @@ let check_and_create_dirs dalle_path vqgan_path =
 let min_dalle_repo = "https://huggingface.co/kuprel/min-dalle/resolve/main/"
 let image_token_count = 256
 
-let init_tokenizer () =
+let download_tokenizer m =
+  let is_downloaded = Sys.file_exists m.vocab_path && Sys.file_exists m.merges_path in
+  Printf.printf "\nis_downloaded:%B\n" is_downloaded
+  
+    
+  
+let init_tokenizer m =
   Client.get (Uri.of_string @@ min_dalle_repo ^ "config.json")
-  >>= fun (resp, body) ->
+  >>= fun (resp, _body) ->
   let code = resp |> Response.status |> Code.code_of_status in
-  Printf.printf "Resp code:%d\n" code;
-  body
-  |> Cohttp_lwt.Body.to_string
-  >|= fun body ->
-  Printf.printf "Body of length: %d\n" (String.length body);
-  body
+  if code != 200 then
+    Lwt.fail_with "HF config.json is not reachable"
+  else
+    Lwt.return @@ download_tokenizer m
 ;;
 
 let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t =
@@ -126,6 +130,6 @@ let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
   (match Option.value m.dtype ~default:(`f32) with
   | `f16 -> print_string "f16"
   | `f32 -> print_string "f32");
-  let tok_init = init_tokenizer () in
+  let tok_init = init_tokenizer m in
   tok_init >|= fun _body -> m
 ;;
