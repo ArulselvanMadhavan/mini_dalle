@@ -1,4 +1,4 @@
-module Min_dalle : sig
-  type t
-end
-                     
+type t
+type 'a with_config = ?models_root:string -> 'a
+
+val make : (unit -> t) with_config
