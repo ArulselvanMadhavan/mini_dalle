@@ -1,3 +1,5 @@
 (library
  (name mini_dalle)
- (libraries base torch torch.core cohttp-lwt-unix))
+ (libraries base torch torch.core cohttp-lwt-unix yojson)
+ (preprocess
+  (pps ppx_yojson_conv)))
