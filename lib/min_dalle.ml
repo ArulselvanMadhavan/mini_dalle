@@ -84,7 +84,7 @@ let load_file file_name =
   Lwt_io.open_file ~mode:Lwt_io.input file_name >>= fun in_ch ->
   Lwt_io.read in_ch
 
-let load_tokenizer m =
+let load_vocab m =
   load_file m.vocab_path >|= fun contents ->
   let out = Yojson.Safe.from_string contents in
   let out = Yojson.Safe.Util.to_assoc out in
@@ -92,6 +92,12 @@ let load_tokenizer m =
   let ht = Hashtbl.create (List.length out) in
   List.iter (fun (k, v) -> Hashtbl.add ht k v) out;
   ht
+
+let load_merges m =
+  load_file m.merges_path >|= fun contents ->
+  let lines = String.split_on_char '\n' contents in
+  List.tl lines
+
   
 let init_tokenizer m =
   Client.get (Uri.of_string @@ min_dalle_repo ^ "config.json")
@@ -102,16 +108,10 @@ let init_tokenizer m =
   else
     download_tokenizer m.is_verbose m.is_mega m.vocab_path
     >>= fun _ -> download_tokenizer m.is_verbose m.is_mega m.merges_path >>= fun _ ->
-    load_tokenizer m
-;;
-
-(* let download_encoder m =
- * 
- *   
- * let init_encoder m =
- *   let is_downloaded = Sys.file_exists m.encoder_params_path in *)
-
-    
+    let tok_lwt = load_vocab m in
+    let mrg_lwt = load_merges m in
+    Lwt.both tok_lwt mrg_lwt
+;;    
     
 
 let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t =
@@ -161,8 +161,6 @@ let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
   print_string m.detoker_params_path;
   print_string m.decoder_params_path;
   print_string m.encoder_params_path;
-  print_string m.merges_path;
-  print_string m.vocab_path;
   print_int m.image_vocab_count;
   print_int m.text_token_count;
   print_int m.glu_embed_count;
@@ -171,11 +169,9 @@ let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
   print_int m.text_token_count;
   print_int m.layer_count;
   print_int m.text_vocab_count;
-  Printf.printf "%B\n" m.is_verbose;
-  Printf.printf "%B\n" m.is_reusable;
-  Printf.printf "%B\n" m.is_mega;
   print_int @@ Option.value m.device ~default:0;
   print_int image_token_count;
+  Printf.printf "%B\n"  m.is_reusable;
   print_string m.models_root;
   (match Option.value m.dtype ~default:`f32 with
    | `f16 -> print_string "f16"
