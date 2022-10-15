@@ -8,7 +8,7 @@ type t =
   ; device : int option
   ; is_mega : bool
   ; is_reusable : bool option
-  ; is_verbose : bool option
+  ; is_verbose : bool
   ; layer_count : int
   ; text_token_count : int
   ; attention_head_count : int
@@ -34,14 +34,15 @@ type 'a with_config =
 
 let exec_command cmd =
   let result = Sys.command cmd in
-  if result != 0 then
+  if result != 0
+  then (
     let err = Sys_error (cmd ^ " command failed") in
-    raise err
-  else
-    ()
+    raise err)
+  else ()
+;;
 
 let mkdir_with_path = "mkdir -p "
-  
+
 let check_and_create_dirs dalle_path vqgan_path =
   if Sys.file_exists dalle_path then () else exec_command @@ mkdir_with_path ^ dalle_path;
   if Sys.file_exists vqgan_path then () else exec_command @@ mkdir_with_path ^ vqgan_path
@@ -50,24 +51,47 @@ let check_and_create_dirs dalle_path vqgan_path =
 let min_dalle_repo = "https://huggingface.co/kuprel/min-dalle/resolve/main/"
 let image_token_count = 256
 
-let download_tokenizer m =
-  let is_downloaded = Sys.file_exists m.vocab_path && Sys.file_exists m.merges_path in
-  Printf.printf "\nis_downloaded:%B\n" is_downloaded
-  
-    
-  
+let fetch_tokenizer is_mega file_path =
+  let suffix = if is_mega then "" else "_mini" in
+  let parts = String.split_on_char '.' file_path in
+  let name = List.hd parts in
+  let name = List.hd @@ List.rev @@ String.split_on_char '/' name in
+  let file_ext = List.hd @@ List.rev parts in
+  let full_uri = min_dalle_repo ^ name ^ suffix ^ "." ^ file_ext in
+  Client.get (Uri.of_string @@ full_uri)
+  >>= fun (resp, body) ->
+  let code = resp |> Response.status |> Code.code_of_status in
+  if code != 200
+  then Lwt.fail_with @@ file_path ^ " download failed"
+  else
+    Lwt_io.open_file file_path ~mode:Lwt_io.output
+    >>= fun out_ch ->
+    Cohttp_lwt.Body.write_body (fun body -> Lwt_io.write out_ch body) body
+;;
+
+let download_tokenizer is_verbose is_mega file_path =
+  let is_downloaded = Sys.file_exists file_path in
+  if not is_downloaded
+  then (
+    let _ = if is_verbose then print_string "downloading tokenizer params\n" else () in
+    fetch_tokenizer is_mega file_path)
+  else Lwt.return ()
+;;
+
 let init_tokenizer m =
   Client.get (Uri.of_string @@ min_dalle_repo ^ "config.json")
   >>= fun (resp, _body) ->
   let code = resp |> Response.status |> Code.code_of_status in
-  if code != 200 then
-    Lwt.fail_with "HF config.json is not reachable"
+  if code != 200
+  then Lwt.fail_with "HF config.json is not reachable"
   else
-    Lwt.return @@ download_tokenizer m
+    download_tokenizer m.is_verbose m.is_mega m.vocab_path
+    >>= fun _ -> download_tokenizer m.is_verbose m.is_mega m.merges_path
 ;;
 
 let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t =
   let is_mega = Option.value is_mega ~default:true in
+  let is_verbose = Option.value is_verbose ~default:true in
   let layer_count = if is_mega then 24 else 12 in
   let text_token_count = 64 in
   let attention_head_count = if is_mega then 32 else 16 in
@@ -121,15 +145,15 @@ let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
   print_int m.text_token_count;
   print_int m.layer_count;
   print_int m.text_vocab_count;
-  Printf.printf "%B\n" @@ Option.value m.is_verbose ~default:true;
+  Printf.printf "%B\n" m.is_verbose;
   Printf.printf "%B\n" @@ Option.value m.is_reusable ~default:true;
   Printf.printf "%B\n" m.is_mega;
   print_int @@ Option.value m.device ~default:0;
   print_int image_token_count;
   print_string m.models_root;
-  (match Option.value m.dtype ~default:(`f32) with
-  | `f16 -> print_string "f16"
-  | `f32 -> print_string "f32");
+  (match Option.value m.dtype ~default:`f32 with
+   | `f16 -> print_string "f16"
+   | `f32 -> print_string "f32");
   let tok_init = init_tokenizer m in
   tok_init >|= fun _body -> m
 ;;
