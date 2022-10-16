@@ -1,7 +1,6 @@
 open Cohttp_lwt_unix
 open Cohttp
 open Lwt
-    
 
 type t =
   { models_root : string
@@ -79,40 +78,42 @@ let download_tokenizer is_verbose is_mega file_path =
   else Lwt.return ()
 ;;
 
-
 let load_file file_name =
-  Lwt_io.open_file ~mode:Lwt_io.input file_name >>= fun in_ch ->
-  Lwt_io.read in_ch
+  Lwt_io.open_file ~mode:Lwt_io.input file_name >>= fun in_ch -> Lwt_io.read in_ch
+;;
 
 let load_vocab m =
-  load_file m.vocab_path >|= fun contents ->
+  load_file m.vocab_path
+  >|= fun contents ->
   let out = Yojson.Safe.from_string contents in
   let out = Yojson.Safe.Util.to_assoc out in
   let out = List.map (fun (k, v) -> k, Yojson.Safe.Util.to_int v) out in
   let ht = Hashtbl.create (List.length out) in
   List.iter (fun (k, v) -> Hashtbl.add ht k v) out;
   ht
+;;
 
 let load_merges m =
-  load_file m.merges_path >|= fun contents ->
+  load_file m.merges_path
+  >|= fun contents ->
   let lines = String.split_on_char '\n' contents in
   List.tl lines
+;;
 
-  
 let init_tokenizer m =
-  Client.get (Uri.of_string @@ min_dalle_repo ^ "config.json")
-  >>= fun (resp, _body) ->
+  let open Lwt.Syntax in
+  let* resp, _body = Client.get (Uri.of_string @@ min_dalle_repo ^ "config.json") in
   let code = resp |> Response.status |> Code.code_of_status in
   if code != 200
   then Lwt.fail_with "HF config.json is not reachable"
   else
-    download_tokenizer m.is_verbose m.is_mega m.vocab_path
-    >>= fun _ -> download_tokenizer m.is_verbose m.is_mega m.merges_path >>= fun _ ->
+    let* _ = download_tokenizer m.is_verbose m.is_mega m.vocab_path in
+    let* _ = download_tokenizer m.is_verbose m.is_mega m.merges_path in
     let tok_lwt = load_vocab m in
     let mrg_lwt = load_merges m in
-    Lwt.both tok_lwt mrg_lwt
-;;    
-    
+    let+ vocab, merges = Lwt.both tok_lwt mrg_lwt in
+    Text_tokenizer.make vocab merges
+;;
 
 let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t =
   let is_mega = Option.value is_mega ~default:true in
@@ -171,7 +172,7 @@ let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
   print_int m.text_vocab_count;
   print_int @@ Option.value m.device ~default:0;
   print_int image_token_count;
-  Printf.printf "%B\n"  m.is_reusable;
+  Printf.printf "%B\n" m.is_reusable;
   print_string m.models_root;
   (match Option.value m.dtype ~default:`f32 with
    | `f16 -> print_string "f16"
@@ -180,5 +181,5 @@ let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
   (* if m.is_reusable then
    *   init_encoder m
    * else *)
-  tok_init >|= fun _body -> m
+  tok_init >|= fun _tt -> m
 ;;
