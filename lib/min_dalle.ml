@@ -5,7 +5,7 @@ open Lwt
 type t =
   { models_root : string
   ; dtype : [ `f32 | `f16 ] option
-  ; device : int option
+  ; device : Torch_core.Device.t
   ; is_mega : bool
   ; is_reusable : bool
   ; is_verbose : bool
@@ -22,6 +22,7 @@ type t =
   ; decoder_params_path : string
   ; detoker_params_path : string
   ; tokenizer : Text_tokenizer.t
+  ; bart_encoder : Dalle_bart_encoder.t option
   }
 
 type 'a with_config =
@@ -116,6 +117,40 @@ let init_tokenizer is_verbose is_mega vocab_path merges_path =
     Text_tokenizer.make vocab merges
 ;;
 
+let fetch_encoder is_verbose is_mega encoder_path =
+  let open Lwt.Syntax in
+  let _ = if is_verbose then print_string "Downloading encoder\n" else () in
+  let suffix = if is_mega then "" else "_mini" in
+  let uri = Uri.of_string @@ min_dalle_repo ^ "encoder" ^ suffix ^ ".pt" in
+  print_string @@ Uri.to_string uri;
+  print_string "\n";
+  let* resp, body = Lwthttp.http_get_and_follow ~max_redirects:2 uri in
+  (* let* resp, body =
+   *   Client.get (Uri.of_string @@ min_dalle_repo ^ "encoder" ^ suffix ^ ".pt")
+   * in *)
+  let code = resp |> Response.status |> Code.code_of_status in
+  if code != 200
+  then Lwt.fail_with @@ "HF Encoder is not reachable. Resp code:" ^ Int.to_string code
+  else
+    let* out_ch = Lwt_io.open_file encoder_path ~mode:Lwt_io.Output in
+    Cohttp_lwt.Body.write_body (fun body -> Lwt_io.write out_ch body) body
+;;
+
+(* let load_encoder frozen_vs model_path =
+ *   let open Torch in
+ *   Serialize.load_multi_ ~named_tensors:(Var_store.all_vars frozen_vs) ~filename:model_path *)
+;;
+
+let download_encoder _frozen_vs is_verbose is_mega encoder_path =
+  let open Lwt.Syntax in
+  let is_downloaded = Sys.file_exists encoder_path in
+  let+ _ =
+    if is_downloaded then Lwt.return () else fetch_encoder is_verbose is_mega encoder_path
+  in
+  ()
+  (* load_encoder frozen_vs encoder_path *)
+;;
+
 let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.t =
   let open Lwt.Syntax in
   let is_mega = Option.value is_mega ~default:true in
@@ -138,7 +173,29 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.
   let encoder_params_path = Filename.concat dalle_path "encoder.pt" in
   let decoder_params_path = Filename.concat dalle_path "decoder.pt" in
   let detoker_params_path = Filename.concat vqgan_path "detoker.pt" in
-  let+ tokenizer = init_tokenizer is_verbose is_mega vocab_path merges_path in
+  let device =
+    Option.fold
+      ~none:Torch_core.Device.Cpu
+      ~some:(fun i -> Torch_core.Device.Cuda i)
+      device
+  in
+  let vs = Torch.Var_store.create ~name:"dalle" ~device ~frozen:true () in
+  let* tokenizer = init_tokenizer is_verbose is_mega vocab_path merges_path in
+  let+ bart_encoder =
+    if is_reusable
+    then
+      let+ _ = download_encoder vs is_verbose is_mega encoder_params_path in
+      Option.some
+      @@ Dalle_bart_encoder.make
+           ~layer_count
+           ~embed_count
+           ~attention_head_count
+           ~text_vocab_count
+           ~text_token_count
+           ~glu_embed_count
+           ~vs
+    else Lwt.return Option.none
+  in
   { models_root
   ; dtype
   ; device
@@ -158,6 +215,7 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.
   ; decoder_params_path
   ; detoker_params_path
   ; tokenizer
+  ; bart_encoder
   }
 ;;
 
@@ -175,7 +233,6 @@ let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
   print_int m.text_token_count;
   print_int m.layer_count;
   print_int m.text_vocab_count;
-  print_int @@ Option.value m.device ~default:0;
   print_int image_token_count;
   Printf.printf "%B\n" m.is_reusable;
   print_string m.models_root;
@@ -183,6 +240,8 @@ let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
    | `f16 -> print_string "f16"
    | `f32 -> print_string "f32");
   let _ = Text_tokenizer.pairs_count m.tokenizer in
+  let _ = Option.is_some m.bart_encoder in
+  Printf.printf "%B\n" @@ Torch.Device.is_cuda m.device;
   List.iter print_string [ m.vocab_path; m.merges_path ];
   List.iter (Printf.printf "%B\n") [ m.is_reusable; m.is_verbose; m.is_mega ];
   m
