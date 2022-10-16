@@ -16,8 +16,5 @@ let make token_from_subword merges =
   { token_from_subword; rank_from_pair }
 ;;
 
-let token_count t =
-  Hashtbl.length t.token_from_subword
-
-let pairs_count t =
-  Hashtbl.length t.rank_from_pair
+let token_count t = Hashtbl.length t.token_from_subword
+let pairs_count t = Hashtbl.length t.rank_from_pair

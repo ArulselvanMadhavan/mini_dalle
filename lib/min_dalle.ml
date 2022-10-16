@@ -21,6 +21,7 @@ type t =
   ; encoder_params_path : string
   ; decoder_params_path : string
   ; detoker_params_path : string
+  ; tokenizer : Text_tokenizer.t
   }
 
 type 'a with_config =
@@ -82,8 +83,8 @@ let load_file file_name =
   Lwt_io.open_file ~mode:Lwt_io.input file_name >>= fun in_ch -> Lwt_io.read in_ch
 ;;
 
-let load_vocab m =
-  load_file m.vocab_path
+let load_vocab vocab_path =
+  load_file vocab_path
   >|= fun contents ->
   let out = Yojson.Safe.from_string contents in
   let out = Yojson.Safe.Util.to_assoc out in
@@ -93,24 +94,24 @@ let load_vocab m =
   ht
 ;;
 
-let load_merges m =
-  load_file m.merges_path
+let load_merges merges_path =
+  load_file merges_path
   >|= fun contents ->
   let lines = String.split_on_char '\n' contents in
   List.tl lines
 ;;
 
-let init_tokenizer m =
+let init_tokenizer is_verbose is_mega vocab_path merges_path =
   let open Lwt.Syntax in
   let* resp, _body = Client.get (Uri.of_string @@ min_dalle_repo ^ "config.json") in
   let code = resp |> Response.status |> Code.code_of_status in
   if code != 200
   then Lwt.fail_with "HF config.json is not reachable"
   else
-    let* _ = download_tokenizer m.is_verbose m.is_mega m.vocab_path in
-    let* _ = download_tokenizer m.is_verbose m.is_mega m.merges_path in
-    let tok_lwt = load_vocab m in
-    let mrg_lwt = load_merges m in
+    let* _ = download_tokenizer is_verbose is_mega vocab_path in
+    let* _ = download_tokenizer is_verbose is_mega merges_path in
+    let tok_lwt = load_vocab vocab_path in
+    let mrg_lwt = load_merges merges_path in
     let+ vocab, merges = Lwt.both tok_lwt mrg_lwt in
     Text_tokenizer.make vocab merges
 ;;
@@ -158,6 +159,7 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t =
 ;;
 
 let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
+  let open Lwt.Syntax in
   let m = mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () in
   print_string m.detoker_params_path;
   print_string m.decoder_params_path;
@@ -177,9 +179,6 @@ let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
   (match Option.value m.dtype ~default:`f32 with
    | `f16 -> print_string "f16"
    | `f32 -> print_string "f32");
-  let tok_init = init_tokenizer m in
-  (* if m.is_reusable then
-   *   init_encoder m
-   * else *)
-  tok_init >|= fun _tt -> m
+  let+ tt = init_tokenizer m in
+  m.tokenizer = tt
 ;;
