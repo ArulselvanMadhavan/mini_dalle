@@ -116,7 +116,8 @@ let init_tokenizer is_verbose is_mega vocab_path merges_path =
     Text_tokenizer.make vocab merges
 ;;
 
-let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t =
+let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.t =
+  let open Lwt.Syntax in
   let is_mega = Option.value is_mega ~default:true in
   let is_verbose = Option.value is_verbose ~default:true in
   let is_reusable = Option.value is_reusable ~default:true in
@@ -137,6 +138,7 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t =
   let encoder_params_path = Filename.concat dalle_path "encoder.pt" in
   let decoder_params_path = Filename.concat dalle_path "decoder.pt" in
   let detoker_params_path = Filename.concat vqgan_path "detoker.pt" in
+  let+ tokenizer = init_tokenizer is_verbose is_mega vocab_path merges_path in
   { models_root
   ; dtype
   ; device
@@ -155,12 +157,13 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t =
   ; encoder_params_path
   ; decoder_params_path
   ; detoker_params_path
+  ; tokenizer
   }
 ;;
 
 let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
   let open Lwt.Syntax in
-  let m = mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () in
+  let+ m = mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () in
   print_string m.detoker_params_path;
   print_string m.decoder_params_path;
   print_string m.encoder_params_path;
@@ -179,6 +182,8 @@ let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
   (match Option.value m.dtype ~default:`f32 with
    | `f16 -> print_string "f16"
    | `f32 -> print_string "f32");
-  let+ tt = init_tokenizer m in
-  m.tokenizer = tt
+  let _ = Text_tokenizer.pairs_count m.tokenizer in
+  List.iter print_string [ m.vocab_path; m.merges_path ];
+  List.iter (Printf.printf "%B\n") [ m.is_reusable; m.is_verbose; m.is_mega ];
+  m
 ;;
