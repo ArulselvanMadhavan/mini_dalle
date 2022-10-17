@@ -125,9 +125,6 @@ let fetch_encoder is_verbose is_mega encoder_path =
   print_string @@ Uri.to_string uri;
   print_string "\n";
   let* resp, body = Lwthttp.http_get_and_follow ~max_redirects:2 uri in
-  (* let* resp, body =
-   *   Client.get (Uri.of_string @@ min_dalle_repo ^ "encoder" ^ suffix ^ ".pt")
-   * in *)
   let code = resp |> Response.status |> Code.code_of_status in
   if code != 200
   then Lwt.fail_with @@ "HF Encoder is not reachable. Resp code:" ^ Int.to_string code
