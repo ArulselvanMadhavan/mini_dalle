@@ -140,8 +140,9 @@ let download_encoder _frozen_vs is_verbose is_mega encoder_path =
     if is_downloaded then Lwt.return () else fetch_encoder is_verbose is_mega encoder_path
   in
   ()
-  (* load_encoder frozen_vs encoder_path *)
 ;;
+
+(* load_encoder frozen_vs encoder_path *)
 
 let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.t =
   let open Lwt.Syntax in
