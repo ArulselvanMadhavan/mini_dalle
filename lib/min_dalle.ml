@@ -122,8 +122,6 @@ let fetch_encoder is_verbose is_mega encoder_path =
   let _ = if is_verbose then print_string "Downloading encoder\n" else () in
   let suffix = if is_mega then "" else "_mini" in
   let uri = Uri.of_string @@ min_dalle_repo ^ "encoder" ^ suffix ^ ".pt" in
-  print_string @@ Uri.to_string uri;
-  print_string "\n";
   let* resp, body = Lwthttp.http_get_and_follow uri encoder_path in
   let code = resp |> Response.status |> Code.code_of_status in
   if code != 200
@@ -133,16 +131,18 @@ let fetch_encoder is_verbose is_mega encoder_path =
     Cohttp_lwt.Body.write_body (fun body -> Lwt_io.write out_ch body) body
 ;;
 
+let load_encoder frozen_vs encoder_path =
+  let module = Torch.Module.load encoder_path in
+    
 let download_encoder _frozen_vs is_verbose is_mega encoder_path =
   let open Lwt.Syntax in
   let is_downloaded = Sys.file_exists encoder_path in
   let+ _ =
     if is_downloaded then Lwt.return () else fetch_encoder is_verbose is_mega encoder_path
   in
-  ()
+  load_encoder frozen_vs encoder_path
 ;;
 
-(* load_encoder frozen_vs encoder_path *)
 
 let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.t =
   let open Lwt.Syntax in
