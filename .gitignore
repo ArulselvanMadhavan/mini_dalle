@@ -2,3 +2,4 @@ _build/
 pretrained/
 data/
 *.pt
+extracts/

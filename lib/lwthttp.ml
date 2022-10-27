@@ -30,7 +30,7 @@ and handle_redirect ~enc_path response =
   | None -> Lwt.fail_with "Redirection without Location header"
   | Some url ->
     let curl_get = Printf.sprintf "curl \"%s\" > %s \n" url enc_path in
-    Printf.printf "Downloading %s\n" enc_path;
+    Printf.printf "Downloading %s\n" curl_get;
     let result = Sys.command curl_get in
     Printf.printf "Result:%d\n" result;
     if result == 0
