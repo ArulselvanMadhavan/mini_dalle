@@ -5,12 +5,16 @@ type t =
   }
 
 module EncoderLayer = struct
-  type t = { pre_self_attn_layer_norm : Torch.Nn.t }
+  type t =
+    { pre_self_attn_layer_norm : Torch.Nn.t
+    ; self_attn_layer_norm : Torch.Nn.t
+    }
 
   let make vs embed_count head_count glu_embed_count =
     List.iter print_int [ head_count; glu_embed_count ];
     let pre_self_attn_layer_norm = Torch.Layer.layer_norm vs embed_count in
-    { pre_self_attn_layer_norm }
+    let self_attn_layer_norm = Torch.Layer.layer_norm vs embed_count in
+    { pre_self_attn_layer_norm; self_attn_layer_norm }
   ;;
 end
 
