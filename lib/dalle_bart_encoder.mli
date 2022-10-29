@@ -1,3 +1,5 @@
+open Torch
+
 type t
 
 val make
@@ -11,3 +13,9 @@ val make
   -> t
 
 val forward : t -> text_tokens:Torch.Tensor.t -> Torch.Tensor.t
+
+module EncoderLayer : sig
+  type t
+
+  val make : Var_store.t -> embed_count:int -> head_count:int -> glu_embed_count:int -> t
+end

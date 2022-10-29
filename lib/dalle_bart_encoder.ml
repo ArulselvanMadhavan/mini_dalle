@@ -4,6 +4,16 @@ type t =
   ; embed_positions : Torch.Nn.t
   }
 
+module EncoderLayer = struct
+  type t = { pre_self_attn_layer_norm : Torch.Nn.t }
+
+  let make vs embed_count head_count glu_embed_count =
+    List.iter print_int [ head_count; glu_embed_count ];
+    let pre_self_attn_layer_norm = Torch.Layer.layer_norm vs embed_count in
+    { pre_self_attn_layer_norm }
+  ;;
+end
+
 let make
   ~layer_count
   ~embed_count
@@ -31,7 +41,4 @@ let make
   { text_vocab_count; embed_tokens; embed_positions }
 ;;
 
-let forward t ~text_tokens =
-  print_int t.text_vocab_count;
-  Torch.Layer.forward t.embed_tokens text_tokens
-;;
+let forward t ~text_tokens = Torch.Layer.forward t.embed_tokens text_tokens
