@@ -19,4 +19,5 @@ module EncoderLayer : sig
   type t
 
   val make : Var_store.t -> embed_count:int -> head_count:int -> glu_embed_count:int -> t
+  val forward : t -> Tensor.t -> Tensor.t -> Tensor.t
 end

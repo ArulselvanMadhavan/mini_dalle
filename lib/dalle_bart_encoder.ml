@@ -12,11 +12,18 @@ module EncoderLayer = struct
     let self_attn_layer_norm = Layer.layer_norm vs embed_count in
     { pre_self_attn_layer_norm; self_attn_layer_norm }
   ;;
+
+  let forward t encoder_state attn_mask =
+    let residual = encoder_state in
+    let encoder_state = Layer.forward t.pre_self_attn_layer_norm encoder_state in
+    let encoder_state = Layer.forward t.self_attn_layer_norm encoder_state in
+    let encoder_state = Tensor.( + ) encoder_state residual in
+    Tensor.( * ) encoder_state attn_mask
+  ;;
 end
 
 type t =
-  { text_vocab_count : int
-  ; embed_tokens : Nn.t
+  { embed_tokens : Nn.t
   ; embed_positions : Nn.t
   ; layers : EncoderLayer.t list
   ; layernorm_embedding : Nn.t
@@ -60,16 +67,20 @@ let make
         ~glu_embed_count)
   in
   print_named_tensors @@ Var_store.all_vars vs;
-  { text_vocab_count
-  ; embed_tokens
-  ; embed_positions
-  ; layers
-  ; layernorm_embedding
-  ; final_ln
-  ; pose_tokens
-  }
+  { embed_tokens; embed_positions; layers; layernorm_embedding; final_ln; pose_tokens }
 ;;
 
 let forward t ~text_tokens =
-  let attn_mask = Tensor.not_equal text_tokens 1
-  Layer.forward t.embed_tokens text_tokens
+  let attn_mask = Tensor.not_equal text_tokens (Scalar.i 1) in
+  let t_forward = Layer.forward t.embed_tokens text_tokens in
+  let p_forward = Layer.forward t.embed_positions t.pose_tokens in
+  let encoder_state = Tensor.( + ) t_forward p_forward in
+  let encoder_state = Layer.forward t.layernorm_embedding encoder_state in
+  let encoder_state =
+    List.fold_left
+      (fun acc l -> EncoderLayer.forward l acc attn_mask)
+      encoder_state
+      t.layers
+  in
+  Layer.forward t.final_ln encoder_state
+;;
