@@ -16,7 +16,7 @@ let print_named_tensors xs =
 
 let load_model dir_path filename =
   let vs = Var_store.create ~name:"min-dalle" () in
-  let _final_embed = Layer.layer_norm Var_store.(vs / "final_ln") 2048 in
+  let _final_embed = Layer.layer_norm Var_store.(vs / "layers" // 0) 2048 in
   let named_tensors = Var_store.all_vars vs in
   print_named_tensors named_tensors;
   Serialize.load_multi_ ~named_tensors ~filename:(dir_path ^ "/" ^ filename)

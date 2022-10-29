@@ -57,11 +57,12 @@ let make
     Tensor.arange ~end_:(Scalar.int layer_count) ~options:(T Int, device)
   in
   let pose_tokens = Tensor.stack [ token_indices; token_indices ] ~dim:0 in
-  let vs = Var_store.sub vs "layers" in
+  print_named_tensors @@ Var_store.all_vars vs;
+  print_string "********************\n";
   let layers =
     List.init layer_count (fun x ->
       EncoderLayer.make
-        (Torch.Var_store.subi vs x)
+        (Torch.Var_store.(vs / "layers" // x))
         ~embed_count
         ~head_count:attention_head_count
         ~glu_embed_count)
