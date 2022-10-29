@@ -1,6 +1,7 @@
 type t =
   { text_vocab_count : int
   ; embed_tokens : Torch.Nn.t
+  ; embed_positions : Torch.Nn.t
   }
 
 let make
@@ -24,7 +25,10 @@ let make
   let embed_tokens =
     Torch.Layer.embeddings vs ~num_embeddings:embed_count ~embedding_dim:text_vocab_count
   in
-  { text_vocab_count; embed_tokens }
+  let embed_positions =
+    Torch.Layer.embeddings vs ~num_embeddings:embed_count ~embedding_dim:text_token_count
+  in
+  { text_vocab_count; embed_tokens; embed_positions }
 ;;
 
 let forward t ~text_tokens =
