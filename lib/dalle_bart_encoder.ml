@@ -24,6 +24,10 @@ type t =
   ; pose_tokens : Tensor.t
   }
 
+let print_named_tensors xs =
+  List.iter (fun (name, t) -> Stdio.printf "%s|%s\n" name @@ Tensor.shape_str t) xs
+;;
+
 let make
   ~vs
   ~layer_count
@@ -55,6 +59,7 @@ let make
         ~head_count:attention_head_count
         ~glu_embed_count)
   in
+  print_named_tensors @@ Var_store.all_vars vs;
   { text_vocab_count
   ; embed_tokens
   ; embed_positions
@@ -65,4 +70,6 @@ let make
   }
 ;;
 
-let forward t ~text_tokens = Layer.forward t.embed_tokens text_tokens
+let forward t ~text_tokens =
+  let attn_mask = Tensor.not_equal text_tokens 1
+  Layer.forward t.embed_tokens text_tokens
