@@ -10,6 +10,7 @@ val make
   -> text_vocab_count:int
   -> text_token_count:int
   -> glu_embed_count:int
+  -> device:Device.t       
   -> t
 
 val forward : t -> text_tokens:Torch.Tensor.t -> Torch.Tensor.t

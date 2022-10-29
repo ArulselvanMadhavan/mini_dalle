@@ -1,24 +1,27 @@
+open Torch
+
 module EncoderLayer = struct
   type t =
-    { pre_self_attn_layer_norm : Torch.Nn.t
-    ; self_attn_layer_norm : Torch.Nn.t
+    { pre_self_attn_layer_norm : Nn.t
+    ; self_attn_layer_norm : Nn.t
     }
 
   let make vs ~embed_count ~head_count ~glu_embed_count =
     List.iter print_int [ head_count; glu_embed_count ];
-    let pre_self_attn_layer_norm = Torch.Layer.layer_norm vs embed_count in
-    let self_attn_layer_norm = Torch.Layer.layer_norm vs embed_count in
+    let pre_self_attn_layer_norm = Layer.layer_norm vs embed_count in
+    let self_attn_layer_norm = Layer.layer_norm vs embed_count in
     { pre_self_attn_layer_norm; self_attn_layer_norm }
   ;;
 end
 
 type t =
   { text_vocab_count : int
-  ; embed_tokens : Torch.Nn.t
-  ; embed_positions : Torch.Nn.t
+  ; embed_tokens : Nn.t
+  ; embed_positions : Nn.t
   ; layers : EncoderLayer.t list
-  ; layernorm_embedding : Torch.Nn.t
-  ; final_ln : Torch.Nn.t
+  ; layernorm_embedding : Nn.t
+  ; final_ln : Nn.t
+  ; pose_tokens : Tensor.t
   }
 
 let make
@@ -32,14 +35,18 @@ let make
   ~device
   =
   let embed_tokens =
-    Torch.Layer.embeddings vs ~num_embeddings:embed_count ~embedding_dim:text_vocab_count
+    Layer.embeddings vs ~num_embeddings:embed_count ~embedding_dim:text_vocab_count
   in
   let embed_positions =
-    Torch.Layer.embeddings vs ~num_embeddings:embed_count ~embedding_dim:text_token_count
+    Layer.embeddings vs ~num_embeddings:embed_count ~embedding_dim:text_token_count
   in
-  let layernorm_embedding = Torch.Layer.layer_norm vs embed_count in
-  let final_ln = Torch.Layer.layer_norm vs embed_count in
-  let vs = Torch.Var_store.sub vs "layers" in
+  let layernorm_embedding = Layer.layer_norm vs embed_count in
+  let final_ln = Layer.layer_norm vs embed_count in
+  let token_indices =
+    Tensor.arange ~end_:(Scalar.int layer_count) ~options:(T Int, device)
+  in
+  let pose_tokens = Tensor.stack [ token_indices; token_indices ] ~dim:0 in
+  let vs = Var_store.sub vs "layers" in
   let layers =
     List.init layer_count (fun x ->
       EncoderLayer.make
@@ -54,7 +61,8 @@ let make
   ; layers
   ; layernorm_embedding
   ; final_ln
+  ; pose_tokens
   }
 ;;
 
-let forward t ~text_tokens = Torch.Layer.forward t.embed_tokens text_tokens
+let forward t ~text_tokens = Layer.forward t.embed_tokens text_tokens

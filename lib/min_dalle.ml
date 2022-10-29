@@ -189,6 +189,7 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.
            ~text_token_count
            ~glu_embed_count
            ~vs
+           ~device
     else Lwt.return Option.none
   in
   { models_root
