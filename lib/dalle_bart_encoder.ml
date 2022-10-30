@@ -101,7 +101,8 @@ let make
         ~head_count:attention_head_count
         ~glu_embed_count)
   in
-  print_named_tensors @@ Var_store.all_vars vs;
+  Serialize.load_multi_ ~named_tensors:(Var_store.all_vars vs) ~filename:("extracts/encodermega/encoder.ot");
+  Stdio.print_string "**** Load complete ****\n";
   { embed_tokens; embed_positions; layers; layernorm_embedding; final_ln; pose_tokens }
 ;;
 
