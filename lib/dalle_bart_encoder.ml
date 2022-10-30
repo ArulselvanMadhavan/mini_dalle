@@ -8,8 +8,12 @@ module EncoderLayer = struct
 
   let make vs ~embed_count ~head_count ~glu_embed_count =
     List.iter print_int [ head_count; glu_embed_count ];
-    let pre_self_attn_layer_norm = Layer.layer_norm vs embed_count in
-    let self_attn_layer_norm = Layer.layer_norm vs embed_count in
+    let pre_self_attn_layer_norm =
+      Layer.layer_norm Var_store.(vs / "pre_self_attn_layer_norm") embed_count
+    in
+    let self_attn_layer_norm =
+      Layer.layer_norm Var_store.(vs / "self_attn_layer_norm") embed_count
+    in
     { pre_self_attn_layer_norm; self_attn_layer_norm }
   ;;
 
@@ -60,7 +64,7 @@ let make
   let layers =
     List.init layer_count (fun x ->
       EncoderLayer.make
-        (Torch.Var_store.(vs / "layers" // x))
+        Torch.Var_store.(vs / "layers" // x)
         ~embed_count
         ~head_count:attention_head_count
         ~glu_embed_count)
