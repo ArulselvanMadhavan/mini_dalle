@@ -59,9 +59,9 @@ type t =
   ; pose_tokens : Tensor.t
   }
 
-let print_named_tensors xs =
-  List.iter (fun (name, t) -> Stdio.printf "%s|%s\n" name @@ Tensor.shape_str t) xs
-;;
+(* let print_named_tensors xs = *)
+(*   List.iter (fun (name, t) -> Stdio.printf "%s|%s\n" name @@ Tensor.shape_str t) xs *)
+(* ;; *)
 
 let make
   ~vs
@@ -101,8 +101,10 @@ let make
         ~head_count:attention_head_count
         ~glu_embed_count)
   in
-  Serialize.load_multi_ ~named_tensors:(Var_store.all_vars vs) ~filename:("extracts/encodermega/encoder.ot");
-  Stdio.print_string "**** Load complete ****\n";
+  Serialize.load_multi_
+    ~named_tensors:(Var_store.all_vars vs)
+    ~filename:"extracts/encodermega/encoder.ot";
+  Stdio.print_string "**** Encoder Load complete ****\n";
   { embed_tokens; embed_positions; layers; layernorm_embedding; final_ln; pose_tokens }
 ;;
 

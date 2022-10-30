@@ -235,7 +235,6 @@ let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
   (match Option.value m.dtype ~default:`f32 with
    | `f16 -> print_string "f16"
    | `f32 -> print_string "f32");
-  let _ = Text_tokenizer.pairs_count m.tokenizer in
   let _ = Option.is_some m.bart_encoder in
   Printf.printf "%B\n" @@ Torch.Device.is_cuda m.device;
   List.iter print_string [ m.vocab_path; m.merges_path ];

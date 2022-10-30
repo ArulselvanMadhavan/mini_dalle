@@ -16,5 +16,9 @@ let make token_from_subword merges =
   { token_from_subword; rank_from_pair }
 ;;
 
-let token_count t = Hashtbl.length t.token_from_subword
-let pairs_count t = Hashtbl.length t.rank_from_pair
+let tokenize t text is_verbose =
+  let sep_token = Hashtbl.find t.token_from_subword "</s>" in
+  let cls_token = Hashtbl.find t.token_from_subword "<s>" in
+  let unk_token = Hashtbl.find t.token_from_subword "<unk>" in
+  String.split_on_char ' ' |> List.filter (fun x -> String.length x > 0)
+;;
