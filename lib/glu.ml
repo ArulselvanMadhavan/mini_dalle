@@ -32,7 +32,7 @@ let make vs ~count_in_out ~count_middle =
       ~input_dim:count_middle
       count_in_out
   in
-  { fc0; fc1; fc2 }
+  { fc0; fc1; fc2; ln0; ln1 }
 ;;
 
 let forward z = z
