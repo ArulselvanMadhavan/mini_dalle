@@ -57,8 +57,6 @@ let make
     Tensor.arange ~end_:(Scalar.int layer_count) ~options:(T Int, device)
   in
   let pose_tokens = Tensor.stack [ token_indices; token_indices ] ~dim:0 in
-  print_named_tensors @@ Var_store.all_vars vs;
-  print_string "********************\n";
   let layers =
     List.init layer_count (fun x ->
       EncoderLayer.make
