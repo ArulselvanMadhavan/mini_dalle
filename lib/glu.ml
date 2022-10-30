@@ -35,4 +35,11 @@ let make vs ~count_in_out ~count_middle =
   { fc0; fc1; fc2; ln0; ln1 }
 ;;
 
-let forward z = z
+let forward t z =
+  let z = Layer.forward t.ln0 z in
+  let w = Layer.forward t.fc0 z in
+  let w = Tensor.gelu w ~approximate:"none" in
+  let v = Layer.forward t.fc1 z in
+  let z = Layer.forward t.ln1 Tensor.(w * v) in
+  Layer.forward t.fc2 z
+;;
