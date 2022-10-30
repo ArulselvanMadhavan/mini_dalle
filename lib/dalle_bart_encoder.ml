@@ -59,10 +59,6 @@ type t =
   ; pose_tokens : Tensor.t
   }
 
-(* let print_named_tensors xs = *)
-(*   List.iter (fun (name, t) -> Stdio.printf "%s|%s\n" name @@ Tensor.shape_str t) xs *)
-(* ;; *)
-
 let make
   ~vs
   ~layer_count
@@ -101,6 +97,7 @@ let make
         ~head_count:attention_head_count
         ~glu_embed_count)
   in
+  (* Because of Var_store load everything here*)
   Serialize.load_multi_
     ~named_tensors:(Var_store.all_vars vs)
     ~filename:"extracts/encodermega/encoder.ot";
