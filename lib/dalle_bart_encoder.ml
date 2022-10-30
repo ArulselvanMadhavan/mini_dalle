@@ -1,32 +1,52 @@
 open Torch
 
+module EncoderSelfAttention = struct
+  type t = { attn : Attention.t }
+
+  let make attn = { attn }
+
+  let forward t encoder_state attn_mask =
+    let keys = Layer.forward t.attn.k_proj encoder_state in
+    let values = Layer.forward t.attn.v_proj encoder_state in
+    let queries = Layer.forward t.attn.q_proj encoder_state in
+    Attention.forward t.attn ~keys ~values ~queries ~attention_mask:attn_mask
+  ;;
+end
+
 module EncoderLayer = struct
   type t =
     { pre_self_attn_layer_norm : Nn.t
     ; self_attn_layer_norm : Nn.t
     ; glu : Glu.t
+    ; self_attn : EncoderSelfAttention.t
     }
 
   let make vs ~embed_count ~head_count ~glu_embed_count =
-    List.iter print_int [ head_count; glu_embed_count ];
     let pre_self_attn_layer_norm =
       Layer.layer_norm Var_store.(vs / "pre_self_attn_layer_norm") embed_count
+    in
+    let self_attn =
+      EncoderSelfAttention.make
+        (Attention.make Var_store.(vs / "self_attn") ~head_count ~embed_count)
     in
     let self_attn_layer_norm =
       Layer.layer_norm Var_store.(vs / "self_attn_layer_norm") embed_count
     in
     let glu = Glu.make vs ~count_in_out:embed_count ~count_middle:glu_embed_count in
-    { pre_self_attn_layer_norm; self_attn_layer_norm; glu }
+    { pre_self_attn_layer_norm; self_attn_layer_norm; glu; self_attn }
   ;;
 
   let forward t encoder_state attn_mask =
-    (* TODO: Rewrite *)
     let residual = encoder_state in
     let encoder_state = Layer.forward t.pre_self_attn_layer_norm encoder_state in
+    let encoder_state =
+      EncoderSelfAttention.forward t.self_attn encoder_state attn_mask
+    in
     let encoder_state = Layer.forward t.self_attn_layer_norm encoder_state in
-    let encoder_state = Tensor.( + ) encoder_state residual in
+    let encoder_state = Tensor.(encoder_state + residual) in
+    let residual = encoder_state in
     let encoder_state = Glu.forward t.glu encoder_state in
-    Tensor.( * ) encoder_state attn_mask
+    Tensor.(residual + encoder_state)
   ;;
 end
 
