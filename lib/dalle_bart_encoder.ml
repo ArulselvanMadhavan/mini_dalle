@@ -74,13 +74,21 @@ let make
   ~device
   =
   let embed_tokens =
-    Layer.embeddings vs ~num_embeddings:embed_count ~embedding_dim:text_vocab_count
+    Layer.embeddings
+      Var_store.(vs / "embed_tokens")
+      ~num_embeddings:embed_count
+      ~embedding_dim:text_vocab_count
   in
   let embed_positions =
-    Layer.embeddings vs ~num_embeddings:embed_count ~embedding_dim:text_token_count
+    Layer.embeddings
+      Var_store.(vs / "embed_positions")
+      ~num_embeddings:embed_count
+      ~embedding_dim:text_token_count
   in
-  let layernorm_embedding = Layer.layer_norm vs embed_count in
-  let final_ln = Layer.layer_norm vs embed_count in
+  let layernorm_embedding =
+    Layer.layer_norm Var_store.(vs / "layernorm_embedding") embed_count
+  in
+  let final_ln = Layer.layer_norm Var_store.(vs / "final_ln") embed_count in
   let token_indices =
     Tensor.arange ~end_:(Scalar.int layer_count) ~options:(T Int, device)
   in
