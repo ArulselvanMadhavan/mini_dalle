@@ -98,10 +98,10 @@ let make
         ~glu_embed_count)
   in
   (* Because of Var_store load everything here*)
-  Serialize.load_multi_
-    ~named_tensors:(Var_store.all_vars vs)
-    ~filename:"extracts/encodermega/encoder.ot";
-  Stdio.print_string "**** Encoder Load complete ****\n";
+  (* Serialize.load_multi_ *)
+  (*   ~named_tensors:(Var_store.all_vars vs) *)
+  (*   ~filename:"extracts/encodermega/encoder.ot"; *)
+  (* Stdio.print_string "**** Encoder Load complete ****\n"; *)
   { embed_tokens; embed_positions; layers; layernorm_embedding; final_ln; pose_tokens }
 ;;
 

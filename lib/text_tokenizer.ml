@@ -4,15 +4,15 @@ type t =
   }
 
 let make token_from_subword merges =
-  let pairs =
-    List.map
-      (fun pair ->
-        let pairs = String.split_on_char ' ' pair in
-        List.hd pairs, List.hd pairs)
-      merges
+  Stdio.printf "Merges count:%d\n" (List.length merges);
+  let take_two line =
+    let parts = String.split_on_char ' ' line in
+    List.hd parts, List.hd (List.tl parts)
   in
+  let pairs = List.map take_two merges in
+  Stdio.printf "Pairs count:%d\n" (List.length pairs);  
   let rank_from_pair = Hashtbl.create (List.length pairs) in
-  List.iteri (fun idx elem -> Hashtbl.add rank_from_pair elem idx) pairs;
+  List.iteri (Base.Fn.flip (Hashtbl.add rank_from_pair)) pairs;
   { token_from_subword; rank_from_pair }
 ;;
 
@@ -22,10 +22,7 @@ let zip_next subwords =
 ;;
 
 let find_min_idx pairs_rank =
-  let find_min cidx acc cur =
-    let _, elem = acc in
-    if cur < elem then cidx, cur else acc
-  in
+  let find_min cidx (pidx, elem) cur = if cur < elem then cidx, cur else pidx, elem in
   Base.Array.foldi ~f:find_min ~init:(-1, Base.Int.max_value) pairs_rank
 ;;
 
@@ -55,6 +52,9 @@ let get_bpe t _is_verbose word =
         pairs
     in
     let min_idx, _elem = find_min_idx pairs_rank in
+    Stdio.printf "Hahstbl:%d" (Hashtbl.stats t.rank_from_pair).num_bindings;
+    Array.iter (fun x -> Stdio.printf "%d\n" x) pairs_rank;
+    Stdio.printf "min_idx:%d|PR len:%d\n" min_idx (Array.length pairs_rank);
     let pair_to_merge = pairs.(min_idx) in
     let rank_sel = Hashtbl.find_opt t.rank_from_pair pair_to_merge in
     if Option.is_none rank_sel

@@ -99,7 +99,7 @@ let load_merges merges_path =
   load_file merges_path
   >|= fun contents ->
   let lines = String.split_on_char '\n' contents in
-  List.tl lines
+  List.tl lines |> List.filter (fun x -> Base.String.is_empty x == false)
 ;;
 
 let init_tokenizer is_verbose is_mega vocab_path merges_path =
@@ -234,6 +234,6 @@ let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
       m.tokenizer
       ~text:"test drive df blasedadasdeaseqwe"
       ~is_verbose:true
-  in  
+  in
   m
 ;;
