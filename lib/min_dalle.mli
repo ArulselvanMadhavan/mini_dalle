@@ -1,3 +1,5 @@
+open Torch
+
 type t
 
 type 'a with_config =
@@ -10,3 +12,14 @@ type 'a with_config =
   -> 'a
 
 val make : (unit -> t Lwt.t) with_config
+
+val generate_raw_image_stream
+  : text:string
+  -> seed:int
+  -> grid_size:int
+  -> ?is_seamless:bool
+  -> ?temperature:float
+  -> ?top_k:int
+  -> ?supercondition_factor:int
+  -> t
+  -> Tensor.t

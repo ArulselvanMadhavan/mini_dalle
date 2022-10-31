@@ -230,10 +230,24 @@ let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
   List.iter print_string [ m.vocab_path; m.merges_path ];
   List.iter (Printf.printf "%B\n") [ m.is_reusable; m.is_verbose; m.is_mega ];
   let _ =
-    Text_tokenizer.tokenize
-      m.tokenizer
-      ~text:"blasedadasdeaseqwe"
-      ~is_verbose:true
+    Text_tokenizer.tokenize m.tokenizer ~text:"blasedadasdeaseqwe" ~is_verbose:true
   in
   m
 ;;
+
+let generate_raw_image_stream
+  ~text
+  ~seed
+  ~grid_size
+  ?(is_seamless = false)
+  ?(temperature = 1.)
+  ?(top_k = 256)
+  ?(supercondition_factor = 16)
+  t
+  =
+  List.iter print_int [ top_k; supercondition_factor; seed; grid_size ; Bool.to_int is_seamless];
+  List.iter print_float [temperature];
+  let _tokens = Text_tokenizer.tokenize t.tokenizer ~text ~is_verbose:t.is_verbose in
+  Torch.Tensor.empty ~size:[ 1; 1 ] ~options:(Torch_core.Kind.(T Float), Torch.Device.Cpu)
+;;
+

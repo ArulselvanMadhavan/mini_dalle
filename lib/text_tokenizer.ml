@@ -35,7 +35,7 @@ let join_subwords arr idx =
 
 let get_bpe t is_verbose word =
   let start = Uchar.of_int (Char.code ' ' + 256) in
-  let buf = (Buffer.create 1) in
+  let buf = Buffer.create 1 in
   Uutf.Buffer.add_utf_8 buf start;
   let start = Buffer.contents buf in
   let subwords =
@@ -61,7 +61,9 @@ let get_bpe t is_verbose word =
     then is_done := true
     else subwords := join_subwords !subwords min_idx
   done;
-  if is_verbose then Array.iteri (fun i x -> Stdio.printf "subwords:%d|%s\n" i x) !subwords else ();
+  if is_verbose
+  then Array.iteri (fun i x -> Stdio.printf "subwords:%d|%s\n" i x) !subwords
+  else ();
   Array.to_list !subwords
 ;;
 
