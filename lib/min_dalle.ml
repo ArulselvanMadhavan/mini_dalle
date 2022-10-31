@@ -229,5 +229,11 @@ let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
   Printf.printf "%B\n" @@ Torch.Device.is_cuda m.device;
   List.iter print_string [ m.vocab_path; m.merges_path ];
   List.iter (Printf.printf "%B\n") [ m.is_reusable; m.is_verbose; m.is_mega ];
+  let _ =
+    Text_tokenizer.tokenize
+      m.tokenizer
+      ~text:"test drive df blasedadasdeaseqwe"
+      ~is_verbose:true
+  in  
   m
 ;;

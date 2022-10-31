@@ -31,16 +31,21 @@ let find_min_idx pairs_rank =
 
 let join_subwords arr idx =
   Base.Array.filter_mapi arr ~f:(fun i el ->
-    if i == idx then Some (Base.String.concat [ arr.(i); arr.(i + 1) ]) else Some el)
+    if i == idx
+    then Some (Base.String.concat [ arr.(i); arr.(i + 1) ])
+    else if i == idx + 1
+    then None
+    else Some el)
 ;;
 
 let get_bpe t _is_verbose word =
   let start = Char.unsafe_chr @@ (Char.code ' ' + 256) in
-  let subwords = List.of_seq (String.to_seq word) in
-  let subwords = List.cons start subwords in
-  let subwords = Array.of_list subwords in
-  let subwords = Array.map Base.String.of_char subwords in
-  let subwords = ref subwords in
+  let subwords =
+    start :: Base.String.to_list word
+    |> Array.of_list
+    |> Array.map Base.String.of_char
+    |> ref
+  in
   while Array.length !subwords > 1 do
     let pairs = zip_next !subwords in
     let pairs_rank =
@@ -56,6 +61,7 @@ let get_bpe t _is_verbose word =
     then subwords := Array.make 0 String.empty
     else subwords := join_subwords !subwords min_idx
   done;
+  Array.iter Stdio.print_string !subwords;
   Array.to_list !subwords
 ;;
 
@@ -71,5 +77,5 @@ let tokenize t ~text ~is_verbose =
     |> List.map (fun x ->
          Option.value (Hashtbl.find_opt t.token_from_subword x) ~default:unk_token)
   in
-  List.append (List.cons cls_token tokens) [ sep_token ]
+  (cls_token :: tokens) @ [ sep_token ]
 ;;
