@@ -232,7 +232,7 @@ let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
   let _ =
     Text_tokenizer.tokenize
       m.tokenizer
-      ~text:"test drive df blasedadasdeaseqwe"
+      ~text:"blasedadasdeaseqwe"
       ~is_verbose:true
   in
   m
