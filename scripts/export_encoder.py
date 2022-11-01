@@ -37,7 +37,7 @@ encoder.load_state_dict(params, strict=False)
 
 nps = {}
 for k, v in encoder.state_dict().items():
-    np.save("extracts/encoder/{}.npy".format(k), v.numpy())
+    np.save("extracts/encodermega/{}.npy".format(k), v.numpy())
     # nps[k] = v.numpy()
 
 # m = torchvision.models.resnet18(pretrained=True)
