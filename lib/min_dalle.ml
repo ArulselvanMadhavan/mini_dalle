@@ -60,6 +60,7 @@ let fetch_tokenizer is_mega file_path =
   let name = List.hd @@ List.rev @@ String.split_on_char '/' name in
   let file_ext = List.hd @@ List.rev parts in
   let full_uri = min_dalle_repo ^ name ^ suffix ^ "." ^ file_ext in
+  Stdio.printf "Tokenizer url:%s\n" full_uri;
   Client.get (Uri.of_string @@ full_uri)
   >>= fun (resp, body) ->
   let code = resp |> Response.status |> Code.code_of_status in
