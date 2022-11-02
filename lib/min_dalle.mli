@@ -14,7 +14,7 @@ type 'a with_config =
 val make : (unit -> t Lwt.t) with_config
 
 val generate_raw_image_stream
-  : text:string
+  :  text:string
   -> seed:int
   -> grid_size:int
   -> ?is_seamless:bool

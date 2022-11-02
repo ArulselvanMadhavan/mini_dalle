@@ -246,9 +246,18 @@ let generate_raw_image_stream
   ?(supercondition_factor = 16)
   t
   =
-  List.iter print_int [ top_k; supercondition_factor; seed; grid_size ; Bool.to_int is_seamless];
-  List.iter print_float [temperature];
-  let _tokens = Text_tokenizer.tokenize t.tokenizer ~text ~is_verbose:t.is_verbose in
+  List.iter
+    print_int
+    [ top_k; supercondition_factor; seed; grid_size; Bool.to_int is_seamless ];
+  List.iter print_float [ temperature ];
+  let image_count = Base.Int.pow grid_size 2 in
+  if t.is_verbose then Stdio.printf "Tokenizing text..." else ();
+  let tokens = Text_tokenizer.tokenize t.tokenizer ~text ~is_verbose:t.is_verbose in
+  let tokens =
+    if List.length tokens > t.text_token_count
+    then Base.List.take tokens t.text_token_count
+    else tokens
+  in
+  if t.is_verbose then Stdio.printf "%d text tokens" @@ List.length tokens;
   Torch.Tensor.empty ~size:[ 1; 1 ] ~options:(Torch_core.Kind.(T Float), Torch.Device.Cpu)
 ;;
-
