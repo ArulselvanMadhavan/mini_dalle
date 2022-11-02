@@ -37,4 +37,4 @@ RUN git clone https://github.com/LaurentMazare/ocaml-torch.git
 RUN cd ocaml-torch
 RUN opam install -y .
 RUN opam install -y utop
-WORDIR ${HOME}
+WORKDIR ${HOME}
