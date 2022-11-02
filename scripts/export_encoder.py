@@ -13,6 +13,15 @@ from min_dalle.models import DalleBartEncoder
 #             device=self.device
 #         ).to(self.dtype).eval()
 
+
+EXTRACTS_PATH = "extracts/encodermega"
+
+if not os.path.isdir(EXTRACTS_PATH):
+    print('The directory is not present. Creating a new one..')
+    os.mkdir(EXTRACTS_PATH)
+else:
+    print('The directory is present.')
+
 is_mega = True
 text_token_count = 64
 layer_count = 24 if is_mega else 12

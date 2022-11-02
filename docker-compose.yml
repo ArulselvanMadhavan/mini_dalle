@@ -1,0 +1,42 @@
+version: "3.8"
+services:
+  mini-dalle:
+    build:
+      context: .
+      dockerfile: .build/Dockerfile
+      args:
+        USER_NAME: ${USER_NAME}
+        UID: ${CURRENT_UID}
+        GID: ${CURRENT_GID}
+        OCAML_COMPILER: ${OCAML_COMPILER}
+    image: localhost:5000/mini-dalle
+    container_name: mini-dalle-${USER}
+    stdin_open: true
+    tty: true
+    restart: always
+    volumes:
+      - type: bind
+        source: ${MODELS_DIR}
+        target: /home/${USER_NAME}/mini-dalle
+      - /home/${USER_NAME}/mini-dalle/_build/
+      - type: bind
+        source: /etc/passwd
+        target: /etc/passwd
+        read_only: true
+      - type: bind
+        source: /etc/group
+        target: /etc/group
+        read_only: true
+      - type: bind
+        source: /etc/shadow
+        target: /etc/shadow
+        read_only: true
+    user: ${CURRENT_UID}:${CURRENT_GID}
+    ports:
+      - "127.0.0.1:${PORT}:8080"
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - capabilities: [gpu]
+    shm_size: 2gb

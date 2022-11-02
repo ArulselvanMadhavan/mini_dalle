@@ -50,7 +50,7 @@ let check_and_create_dirs dalle_path vqgan_path =
   if Sys.file_exists vqgan_path then () else exec_command @@ mkdir_with_path ^ vqgan_path
 ;;
 
-let min_dalle_repo = "https://huggingface.co/kuprel/min-dalle/resolve/main/"
+let min_dalle_repo = "http://huggingface.co/kuprel/min-dalle/resolve/main/"
 let image_token_count = 256
 
 let fetch_tokenizer is_mega file_path =
