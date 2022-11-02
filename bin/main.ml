@@ -5,7 +5,7 @@ let () =
   let m = Lwt_main.run m in
   let _ =
     Min_dalle.generate_raw_image_stream
-      ~text:"cactus in corn field"
+      ~text:"cactus in a corn field"
       ~seed:(-1)
       ~grid_size:3
       m

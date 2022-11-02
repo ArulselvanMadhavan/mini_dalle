@@ -209,7 +209,6 @@ let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
   print_string m.decoder_params_path;
   print_string m.encoder_params_path;
   print_int m.image_vocab_count;
-  print_int m.text_token_count;
   print_int m.glu_embed_count;
   print_int m.embed_count;
   print_int m.attention_head_count;
@@ -274,6 +273,7 @@ let generate_raw_image_stream
       ~accumulate:false
   in
   if t.is_verbose then Stdio.printf "Encoding text tokens\n" else ();
-  let _encoder_state = Dalle_bart_encoder.forward t.bart_encoder ~text_tokens in
-  text_tokens
+  let encoder_state = Dalle_bart_encoder.forward t.bart_encoder ~text_tokens in
+  (* Torch.Serialize.save encoder_state ~filename:"encoder_state.ot"; *)
+  encoder_state
 ;;
