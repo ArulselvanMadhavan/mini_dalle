@@ -22,7 +22,7 @@ type t =
   ; decoder_params_path : string
   ; detoker_params_path : string
   ; tokenizer : Text_tokenizer.t
-  ; bart_encoder : Dalle_bart_encoder.t option
+  ; bart_encoder : Dalle_bart_encoder.t
   }
 
 type 'a with_config =
@@ -168,20 +168,16 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.
   let vs = Torch.Var_store.create ~name:"dalle" ~device ~frozen:true () in
   let* tokenizer = init_tokenizer is_verbose is_mega vocab_path merges_path in
   let+ bart_encoder =
-    if is_reusable
-    then
-      let+ _ = download_encoder vs is_verbose is_mega encoder_params_path in
-      Option.some
-      @@ Dalle_bart_encoder.make
-           ~layer_count
-           ~embed_count
-           ~attention_head_count
-           ~text_vocab_count
-           ~text_token_count
-           ~glu_embed_count
-           ~vs
-           ~device
-    else Lwt.return Option.none
+    let+ _ = download_encoder vs is_verbose is_mega encoder_params_path in
+    Dalle_bart_encoder.make
+      ~layer_count
+      ~embed_count
+      ~attention_head_count
+      ~text_vocab_count
+      ~text_token_count
+      ~glu_embed_count
+      ~vs
+      ~device
   in
   { models_root
   ; dtype
@@ -226,7 +222,6 @@ let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
   (match Option.value m.dtype ~default:`f32 with
    | `f16 -> print_string "f16"
    | `f32 -> print_string "f32");
-  let _ = Option.is_some m.bart_encoder in
   Printf.printf "%B\n" @@ Torch.Device.is_cuda m.device;
   List.iter print_string [ m.vocab_path; m.merges_path ];
   List.iter (Printf.printf "%B\n") [ m.is_reusable; m.is_verbose; m.is_mega ];
@@ -257,7 +252,9 @@ let generate_raw_image_stream
     else tokens
   in
   if t.is_verbose then Stdio.printf "%d text tokens" @@ List.length tokens;
-  let text_tokens = Tensor.ones ~device:t.device [ 2; t.text_token_count ] ~kind:(Torch_core.Kind.(T i64)) in
+  let text_tokens =
+    Tensor.ones ~device:t.device [ 2; t.text_token_count ] ~kind:Torch_core.Kind.(T i64)
+  in
   let tokens = Array.of_list tokens in
   Tensor.int_set text_tokens [ 0; 0 ] tokens.(0);
   Tensor.int_set text_tokens [ 0; 1 ] tokens.(Array.length tokens - 1);
@@ -272,10 +269,11 @@ let generate_raw_image_stream
   let text_tokens =
     Tensor.index_put
       text_tokens
-      ~indices:[ Some (Tensor.ones ~kind:(Torch_core.Kind.(T i64)) [1]); Some indices ]
+      ~indices:[ Some (Tensor.ones ~kind:Torch_core.Kind.(T i64) [ 1 ]); Some indices ]
       ~values:tokens
       ~accumulate:false
   in
-  Tensor.print text_tokens;
+  if t.is_verbose then Stdio.printf "Encoding text tokens" else ();
+  let _encoder_state = Dalle_bart_encoder.forward t.bart_encoder ~text_tokens in
   text_tokens
 ;;

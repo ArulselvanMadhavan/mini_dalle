@@ -98,15 +98,16 @@ let make
         ~glu_embed_count)
   in
   (* Because of Var_store load everything here*)
-  (* Serialize.load_multi_ *)
-  (*   ~named_tensors:(Var_store.all_vars vs) *)
-  (*   ~filename:"extracts/encodermega/encoder.ot"; *)
-  (* Stdio.print_string "**** Encoder Load complete ****\n"; *)
+  Serialize.load_multi_
+    ~named_tensors:(Var_store.all_vars vs)
+    ~filename:"extracts/encodermega/encoder.ot";
+  Stdio.print_string "**** Encoder Load complete ****\n";
   { embed_tokens; embed_positions; layers; layernorm_embedding; final_ln; pose_tokens }
 ;;
 
 let forward t ~text_tokens =
   let attn_mask = Tensor.not_equal text_tokens (Scalar.i 1) in
+  Tensor.print attn_mask;
   let t_forward = Layer.forward t.embed_tokens text_tokens in
   let p_forward = Layer.forward t.embed_positions t.pose_tokens in
   let encoder_state = Tensor.( + ) t_forward p_forward in
