@@ -53,8 +53,8 @@ let forward t ~keys ~values ~queries ~attention_mask =
   let keys = Tensor.reshape keys ~shape:k_shape in
   let values = Tensor.reshape values ~shape:v_shape in
   let queries = Tensor.reshape queries ~shape:q_shape in
-  let q_rows = List.hd @@ Tensor.shape queries in
-  let queries = Tensor.sqrt @@ Tensor.div_scalar queries (Scalar.int q_rows) in
+  let q_div = Float.sqrt @@ Float.of_int @@ Base.List.last_exn @@ Tensor.shape queries in
+  let queries = Tensor.div_scalar queries (Scalar.f q_div) in
   let attention_mask =
     Tensor.to_dtype attention_mask ~dtype:(T Float) ~non_blocking:true ~copy:false
   in

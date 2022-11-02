@@ -43,7 +43,7 @@ module EncoderLayer = struct
       EncoderSelfAttention.forward t.self_attn encoder_state attn_mask
     in
     let encoder_state = Layer.forward t.self_attn_layer_norm encoder_state in
-    let encoder_state = Tensor.(encoder_state + residual) in
+    let encoder_state = Tensor.(residual + encoder_state) in
     let residual = encoder_state in
     let encoder_state = Glu.forward t.glu encoder_state in
     Tensor.(residual + encoder_state)
@@ -72,21 +72,21 @@ let make
   let embed_tokens =
     Layer.embeddings
       Var_store.(vs / "embed_tokens")
-      ~num_embeddings:embed_count
-      ~embedding_dim:text_vocab_count
+      ~num_embeddings:text_vocab_count
+      ~embedding_dim:embed_count
   in
   let embed_positions =
     Layer.embeddings
       Var_store.(vs / "embed_positions")
-      ~num_embeddings:embed_count
-      ~embedding_dim:text_token_count
+      ~num_embeddings:text_token_count
+      ~embedding_dim:embed_count
   in
   let layernorm_embedding =
     Layer.layer_norm Var_store.(vs / "layernorm_embedding") embed_count
   in
   let final_ln = Layer.layer_norm Var_store.(vs / "final_ln") embed_count in
   let token_indices =
-    Tensor.arange ~end_:(Scalar.int layer_count) ~options:(T Int, device)
+    Tensor.arange ~end_:(Scalar.int text_token_count) ~options:(T Int, device)
   in
   let pose_tokens = Tensor.stack [ token_indices; token_indices ] ~dim:0 in
   let layers =
@@ -107,7 +107,6 @@ let make
 
 let forward t ~text_tokens =
   let attn_mask = Tensor.not_equal text_tokens (Scalar.i 1) in
-  Tensor.print attn_mask;
   let t_forward = Layer.forward t.embed_tokens text_tokens in
   let p_forward = Layer.forward t.embed_positions t.pose_tokens in
   let encoder_state = Tensor.( + ) t_forward p_forward in

@@ -244,14 +244,14 @@ let generate_raw_image_stream
     [ top_k; supercondition_factor; seed; grid_size; Bool.to_int is_seamless ];
   List.iter print_float [ temperature ];
   let _image_count = Base.Int.pow grid_size 2 in
-  if t.is_verbose then Stdio.printf "Tokenizing text..." else ();
+  if t.is_verbose then Stdio.printf "Tokenizing text...\n" else ();
   let tokens = Text_tokenizer.tokenize t.tokenizer ~text ~is_verbose:t.is_verbose in
   let tokens =
     if List.length tokens > t.text_token_count
     then Base.List.take tokens t.text_token_count
     else tokens
   in
-  if t.is_verbose then Stdio.printf "%d text tokens" @@ List.length tokens;
+  if t.is_verbose then Stdio.printf "%d text tokens\n" @@ List.length tokens;
   let text_tokens =
     Tensor.ones ~device:t.device [ 2; t.text_token_count ] ~kind:Torch_core.Kind.(T i64)
   in
@@ -273,7 +273,7 @@ let generate_raw_image_stream
       ~values:tokens
       ~accumulate:false
   in
-  if t.is_verbose then Stdio.printf "Encoding text tokens" else ();
+  if t.is_verbose then Stdio.printf "Encoding text tokens\n" else ();
   let _encoder_state = Dalle_bart_encoder.forward t.bart_encoder ~text_tokens in
   text_tokens
 ;;
