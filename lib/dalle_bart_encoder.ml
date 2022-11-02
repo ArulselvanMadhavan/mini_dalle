@@ -107,6 +107,12 @@ let make
 
 let forward t ~text_tokens =
   let attn_mask = Tensor.not_equal text_tokens (Scalar.i 1) in
+  let mask_shp = Tensor.shape attn_mask in
+  let attn_mask =
+    Tensor.reshape
+      attn_mask
+      ~shape:[ List.hd mask_shp; 1; 1; Base.List.last_exn mask_shp ]
+  in
   let t_forward = Layer.forward t.embed_tokens text_tokens in
   let p_forward = Layer.forward t.embed_positions t.pose_tokens in
   let encoder_state = Tensor.( + ) t_forward p_forward in
