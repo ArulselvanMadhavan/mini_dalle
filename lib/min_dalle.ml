@@ -50,7 +50,7 @@ let check_and_create_dirs dalle_path vqgan_path =
   if Sys.file_exists vqgan_path then () else exec_command @@ mkdir_with_path ^ vqgan_path
 ;;
 
-let min_dalle_repo = "http://huggingface.co/kuprel/min-dalle/resolve/main/"
+let min_dalle_repo = "https://huggingface.co/kuprel/min-dalle/resolve/main/"
 let image_token_count = 256
 
 let fetch_tokenizer is_mega file_path =
@@ -230,9 +230,6 @@ let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
   Printf.printf "%B\n" @@ Torch.Device.is_cuda m.device;
   List.iter print_string [ m.vocab_path; m.merges_path ];
   List.iter (Printf.printf "%B\n") [ m.is_reusable; m.is_verbose; m.is_mega ];
-  let _ =
-    Text_tokenizer.tokenize m.tokenizer ~text:"blasedadasdeaseqwe" ~is_verbose:true
-  in
   m
 ;;
 
@@ -246,11 +243,12 @@ let generate_raw_image_stream
   ?(supercondition_factor = 16)
   t
   =
+  let open Torch in
   List.iter
     print_int
     [ top_k; supercondition_factor; seed; grid_size; Bool.to_int is_seamless ];
   List.iter print_float [ temperature ];
-  let image_count = Base.Int.pow grid_size 2 in
+  let _image_count = Base.Int.pow grid_size 2 in
   if t.is_verbose then Stdio.printf "Tokenizing text..." else ();
   let tokens = Text_tokenizer.tokenize t.tokenizer ~text ~is_verbose:t.is_verbose in
   let tokens =
@@ -259,5 +257,25 @@ let generate_raw_image_stream
     else tokens
   in
   if t.is_verbose then Stdio.printf "%d text tokens" @@ List.length tokens;
-  Torch.Tensor.empty ~size:[ 1; 1 ] ~options:(Torch_core.Kind.(T Float), Torch.Device.Cpu)
+  let text_tokens = Tensor.ones ~device:t.device [ 2; t.text_token_count ] ~kind:(Torch_core.Kind.(T i64)) in
+  let tokens = Array.of_list tokens in
+  Tensor.int_set text_tokens [ 0; 0 ] tokens.(0);
+  Tensor.int_set text_tokens [ 0; 1 ] tokens.(Array.length tokens - 1);
+  let indices =
+    Tensor.range
+      ~start:(Scalar.i 0)
+      ~end_:(Scalar.i (Array.length tokens - 1))
+      ~options:(Torch_core.Kind.(T i64), t.device)
+  in
+  let tokens = Bigarray.Array1.of_array Bigarray.Int Bigarray.C_layout tokens in
+  let tokens = Tensor.of_bigarray @@ Bigarray.genarray_of_array1 tokens in
+  let text_tokens =
+    Tensor.index_put
+      text_tokens
+      ~indices:[ Some (Tensor.ones ~kind:(Torch_core.Kind.(T i64)) [1]); Some indices ]
+      ~values:tokens
+      ~accumulate:false
+  in
+  Tensor.print text_tokens;
+  text_tokens
 ;;
