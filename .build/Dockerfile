@@ -33,8 +33,5 @@ RUN unzip libtorch-cxx11-abi-shared-with-deps-1.12.0+cu102.zip
 ENV LIBTORCH=${HOME}/libtorch
 RUN rm -rf libtorch-cxx11-abi-shared-with-deps-1.12.0+cu102.zip
 
-RUN git clone https://github.com/LaurentMazare/ocaml-torch.git
-RUN cd ocaml-torch
-RUN opam install -y .
-RUN opam install -y utop
+RUN opam install -y utop torch
 WORKDIR ${HOME}
