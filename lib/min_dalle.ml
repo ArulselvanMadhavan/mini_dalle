@@ -262,7 +262,9 @@ let generate_raw_image_stream
       ~options:(Torch_core.Kind.(T i64), t.device)
   in
   let tokens = Bigarray.Array1.of_array Bigarray.Int Bigarray.C_layout tokens in
-  let tokens = Tensor.of_bigarray ~device:t.device @@ Bigarray.genarray_of_array1 tokens in
+  let tokens =
+    Tensor.of_bigarray ~device:t.device @@ Bigarray.genarray_of_array1 tokens
+  in
   let text_tokens =
     Tensor.index_put
       text_tokens
