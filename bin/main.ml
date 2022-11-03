@@ -1,7 +1,7 @@
 open Mini_dalle
 
 let () =
-  let m = Min_dalle.make () in
+  let m = Min_dalle.make ~device:0 () in
   let m = Lwt_main.run m in
   let _ =
     Min_dalle.generate_raw_image_stream

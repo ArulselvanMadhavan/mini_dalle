@@ -238,11 +238,9 @@ let generate_raw_image_stream
   t
   =
   let open Torch in
-  List.iter
-    print_int
-    [ top_k; supercondition_factor; seed; grid_size; Bool.to_int is_seamless ];
+  List.iter print_int [ top_k; seed; supercondition_factor; Bool.to_int is_seamless ];
   List.iter print_float [ temperature ];
-  let _image_count = Base.Int.pow grid_size 2 in
+  let image_count = Base.Int.pow grid_size 2 in
   if t.is_verbose then Stdio.printf "Tokenizing text...\n" else ();
   let tokens = Text_tokenizer.tokenize t.tokenizer ~text ~is_verbose:t.is_verbose in
   let tokens =
@@ -264,7 +262,7 @@ let generate_raw_image_stream
       ~options:(Torch_core.Kind.(T i64), t.device)
   in
   let tokens = Bigarray.Array1.of_array Bigarray.Int Bigarray.C_layout tokens in
-  let tokens = Tensor.of_bigarray @@ Bigarray.genarray_of_array1 tokens in
+  let tokens = Tensor.of_bigarray ~device:t.device @@ Bigarray.genarray_of_array1 tokens in
   let text_tokens =
     Tensor.index_put
       text_tokens
@@ -275,5 +273,43 @@ let generate_raw_image_stream
   if t.is_verbose then Stdio.printf "Encoding text tokens\n" else ();
   let encoder_state = Dalle_bart_encoder.forward t.bart_encoder ~text_tokens in
   (* Torch.Serialize.save encoder_state ~filename:"encoder_state.ot"; *)
+  let expanded_indices =
+    Tensor.concat
+      [ Tensor.repeat (Tensor.of_int0 0) ~repeats:[ image_count ]
+      ; Tensor.repeat (Tensor.of_int0 1) ~repeats:[ image_count ]
+      ]
+      ~dim:0
+  in
+  let encoder_state = Tensor.index encoder_state ~indices:[ Some expanded_indices ] in
+  (* let text_tokens = Tensor.index text_tokens ~indices:[ Some expanded_indices ] in *)
+  (* let attention_mask = Tensor.not_equal text_tokens (Scalar.i 1) in *)
+  (* let mask_shp = Tensor.shape attention_mask in *)
+  (* let attention_mask = *)
+  (*   Tensor.reshape *)
+  (*     attention_mask *)
+  (*     ~shape:[ List.hd mask_shp; 1; 1; Base.List.last_exn mask_shp ] *)
+  (* in *)
+  (* let attention_state = *)
+  (*   Tensor.zeros *)
+  (*     ~requires_grad:false *)
+  (*     ~device:t.device *)
+  (*     [ t.layer_count; image_count * 4; image_token_count; t.embed_count ] *)
+  (* in *)
+  (* let image_tokens = *)
+  (*   Tensor.full *)
+  (*     ~size:[ image_count; image_token_count + 1 ] *)
+  (*     ~fill_value:(Scalar.i (Base.Int.pow 2 14 - 1)) *)
+  (*     ~options:(Torch_core.Kind.(T Int64), t.device) *)
+  (* in *)
+  (* if seed > 0 then Torch_core.Wrapper.manual_seed seed else (); *)
+  (* let token_indices = *)
+  (*   Tensor.arange *)
+  (*     ~end_:(Scalar.i image_token_count) *)
+  (*     ~options:(Torch_core.Kind.(T Int64), t.device) *)
+  (* in *)
+  (* let settings = *)
+  (*   Tensor.of_float1 *)
+  (*     [| temperature; Float.of_int top_k; Float.of_int supercondition_factor |] ~device:t.device *)
+  (* in *)
   encoder_state
 ;;
