@@ -9,7 +9,6 @@ type t =
   }
 
 let make vs ~count_in_out ~count_middle =
-  let vs = Var_store.(vs / "glu") in
   let ln0 = Layer.layer_norm Var_store.(vs / "ln0") count_in_out in
   let ln1 = Layer.layer_norm Var_store.(vs / "ln1") count_middle in
   let fc0 =

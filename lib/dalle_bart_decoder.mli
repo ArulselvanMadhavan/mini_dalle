@@ -11,3 +11,13 @@ val make
   -> layer_count:int
   -> device:Torch.Device.t
   -> t
+
+val sample_tokens
+  :  t
+  -> settings:Tensor.t
+  -> attention_mask:Tensor.t
+  -> encoder_state:Tensor.t
+  -> attention_state:Tensor.t
+  -> prev_tokens:Tensor.t
+  -> token_index:Tensor.t
+  -> Tensor.t * Tensor.t

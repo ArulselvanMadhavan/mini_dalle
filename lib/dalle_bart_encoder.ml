@@ -32,7 +32,12 @@ module EncoderLayer = struct
     let self_attn_layer_norm =
       Layer.layer_norm Var_store.(vs / "self_attn_layer_norm") embed_count
     in
-    let glu = Glu.make vs ~count_in_out:embed_count ~count_middle:glu_embed_count in
+    let glu =
+      Glu.make
+        Var_store.(vs / "glu")
+        ~count_in_out:embed_count
+        ~count_middle:glu_embed_count
+    in
     { pre_self_attn_layer_norm; self_attn_layer_norm; glu; self_attn }
   ;;
 
@@ -86,7 +91,7 @@ let make
   in
   let final_ln = Layer.layer_norm Var_store.(vs / "final_ln") embed_count in
   let token_indices =
-    Tensor.arange ~end_:(Scalar.int text_token_count) ~options:(T Int, device)
+    Tensor.arange ~end_:(Scalar.int text_token_count) ~options:(T Int64, device)
   in
   let pose_tokens = Tensor.stack [ token_indices; token_indices ] ~dim:0 in
   let layers =
