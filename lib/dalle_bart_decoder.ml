@@ -180,16 +180,12 @@ module DecoderLayer = struct
 end
 
 type t =
-  { layer_count : int
-  ; embed_count : int
-  ; image_vocab_count : int
-  ; embed_tokens : Nn.t
+  { embed_tokens : Nn.t
   ; embed_positions : Nn.t
   ; layers : DecoderLayer.t list
   ; layernorm_embedding : Nn.t
   ; final_ln : Nn.t
   ; lm_head : Nn.t
-  ; token_indices : Tensor.t
   ; device : Device.t
   }
 
@@ -235,19 +231,12 @@ let make
       ~input_dim:embed_count
       (image_vocab_count + 1)
   in
-  let token_indices =
-    Tensor.arange ~end_:(Scalar.i Min_dalle.image_token_count) ~options:(T Int64, device)
-  in
-  { layer_count
-  ; embed_count
-  ; image_vocab_count
-  ; embed_tokens
+  { embed_tokens
   ; embed_positions
   ; layers
   ; layernorm_embedding
   ; final_ln
   ; lm_head
-  ; token_indices
   ; device
   }
 ;;
