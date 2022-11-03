@@ -23,6 +23,7 @@ type t =
   ; detoker_params_path : string
   ; tokenizer : Text_tokenizer.t
   ; bart_encoder : Dalle_bart_encoder.t
+  ; bart_decoder : Dalle_bart_decoder.t
   }
 
 type 'a with_config =
@@ -51,7 +52,6 @@ let check_and_create_dirs dalle_path vqgan_path =
 ;;
 
 let min_dalle_repo = "https://huggingface.co/kuprel/min-dalle/resolve/main/"
-let image_token_count = 256
 
 let fetch_tokenizer is_mega file_path =
   let suffix = if is_mega then "" else "_mini" in
@@ -179,6 +179,7 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.
       ~vs
       ~device
   in
+  let bart_decoder = Dalle_bart_decoder.make vs ~image_vocab_count ~embed_count ~attention_head_count ~glu_embed_count ~layer_count ~device in
   { models_root
   ; dtype
   ; device
@@ -199,6 +200,7 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.
   ; detoker_params_path
   ; tokenizer
   ; bart_encoder
+  ; bart_decoder    
   }
 ;;
 
@@ -215,7 +217,6 @@ let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
   print_int m.text_token_count;
   print_int m.layer_count;
   print_int m.text_vocab_count;
-  print_int image_token_count;
   Printf.printf "%B\n" m.is_reusable;
   print_string m.models_root;
   (match Option.value m.dtype ~default:`f32 with
@@ -283,35 +284,38 @@ let generate_raw_image_stream
       ~dim:0
   in
   let encoder_state = Tensor.index encoder_state ~indices:[ Some expanded_indices ] in
-  (* let text_tokens = Tensor.index text_tokens ~indices:[ Some expanded_indices ] in *)
-  (* let attention_mask = Tensor.not_equal text_tokens (Scalar.i 1) in *)
-  (* let mask_shp = Tensor.shape attention_mask in *)
-  (* let attention_mask = *)
-  (*   Tensor.reshape *)
-  (*     attention_mask *)
-  (*     ~shape:[ List.hd mask_shp; 1; 1; Base.List.last_exn mask_shp ] *)
-  (* in *)
-  (* let attention_state = *)
-  (*   Tensor.zeros *)
-  (*     ~requires_grad:false *)
-  (*     ~device:t.device *)
-  (*     [ t.layer_count; image_count * 4; image_token_count; t.embed_count ] *)
-  (* in *)
-  (* let image_tokens = *)
-  (*   Tensor.full *)
-  (*     ~size:[ image_count; image_token_count + 1 ] *)
-  (*     ~fill_value:(Scalar.i (Base.Int.pow 2 14 - 1)) *)
-  (*     ~options:(Torch_core.Kind.(T Int64), t.device) *)
-  (* in *)
-  (* if seed > 0 then Torch_core.Wrapper.manual_seed seed else (); *)
-  (* let token_indices = *)
-  (*   Tensor.arange *)
-  (*     ~end_:(Scalar.i image_token_count) *)
-  (*     ~options:(Torch_core.Kind.(T Int64), t.device) *)
-  (* in *)
-  (* let settings = *)
-  (*   Tensor.of_float1 *)
-  (*     [| temperature; Float.of_int top_k; Float.of_int supercondition_factor |] ~device:t.device *)
-  (* in *)
+  let text_tokens = Tensor.index text_tokens ~indices:[ Some expanded_indices ] in
+  let attention_mask = Tensor.not_equal text_tokens (Scalar.i 1) in
+  let mask_shp = Tensor.shape attention_mask in
+  let attention_mask =
+    Tensor.reshape
+      attention_mask
+      ~shape:[ List.hd mask_shp; 1; 1; Base.List.last_exn mask_shp ]
+  in
+  let attention_state =
+    Tensor.zeros
+      ~requires_grad:false
+      ~device:t.device
+      [ t.layer_count; image_count * 4; Constants.image_token_count; t.embed_count ]
+  in
+  let image_tokens =
+    Tensor.full
+      ~size:[ image_count; Constants.image_token_count + 1 ]
+      ~fill_value:(Scalar.i (Base.Int.pow 2 14 - 1))
+      ~options:(Torch_core.Kind.(T Int64), t.device)
+  in
+  if seed > 0 then Torch_core.Wrapper.manual_seed seed else ();
+  let token_indices =
+    Tensor.arange
+      ~end_:(Scalar.i Constants.image_token_count)
+      ~options:(Torch_core.Kind.(T Int64), t.device)
+  in
+  let settings =
+    Tensor.of_float1
+      [| temperature; Float.of_int top_k; Float.of_int supercondition_factor |] ~device:t.device
+  in
+  let prev_tokens = (Tensor.index image_tokens ~indices:[None; Some (Tensor.of_int0 0)]) in
+  let token_index = Tensor.index token_indices ~indices:[Some (Tensor.of_int0 0)] in
+  let _, _ = Dalle_bart_decoder.sample_tokens t.bart_decoder ~settings ~attention_mask ~encoder_state ~attention_state ~prev_tokens ~token_index in
   encoder_state
 ;;

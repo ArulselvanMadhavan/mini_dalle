@@ -23,5 +23,3 @@ val generate_raw_image_stream
   -> ?supercondition_factor:int
   -> t
   -> Tensor.t
-
-val image_token_count : int

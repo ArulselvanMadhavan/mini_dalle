@@ -105,7 +105,7 @@ module DecoderLayer = struct
         ~count_middle:glu_embed_count
     in
     let token_indices =
-      Tensor.arange ~end_:(Scalar.i Min_dalle.image_token_count) ~options:(T Int64, device)
+      Tensor.arange ~end_:(Scalar.i Constants.image_token_count) ~options:(T Int64, device)
     in
     { pre_self_attn_layer_norm
     ; self_attn
@@ -208,7 +208,7 @@ let make
   let embed_positions =
     Layer.embeddings
       Var_store.(vs / "embed_positions")
-      ~num_embeddings:(Min_dalle.image_token_count + 1)
+      ~num_embeddings:(Constants.image_token_count + 1)
       ~embedding_dim:embed_count
   in
   let layers =
@@ -231,6 +231,10 @@ let make
       ~input_dim:embed_count
       (image_vocab_count + 1)
   in
+  (* FIXME *)
+  Serialize.load_multi_
+    ~named_tensors:(Var_store.all_vars vs)
+    ~filename:"extracts/decodermega/decoder.ot";
   { embed_tokens
   ; embed_positions
   ; layers

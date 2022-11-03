@@ -103,6 +103,7 @@ let make
         ~glu_embed_count)
   in
   (* Because of Var_store load everything here*)
+  (* FIXME *)
   Serialize.load_multi_
     ~named_tensors:(Var_store.all_vars vs)
     ~filename:"extracts/encodermega/encoder.ot";
