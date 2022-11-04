@@ -238,6 +238,8 @@ let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
   m
 ;;
 
+let image_grid_from_tokens ~image_tokens ~is_seamless ~is_verbose = Tensor.empty
+
 let generate_raw_image_stream
   ~text
   ~seed
@@ -354,7 +356,7 @@ let generate_raw_image_stream
            ~accumulate:false;
     attention_state := attention_state_0
   done;
-  Serialize.save !image_tokens ~filename:"image_tokens.ot";
-  Serialize.save !attention_state ~filename:"attention_state.ot";
-  encoder_state
+  (* Serialize.save !image_tokens ~filename:"image_tokens.ot"; *)
+  (* Serialize.save !attention_state ~filename:"attention_state.ot"; *)
+  image_grid_from_tokens ~image_tokens ~is_seamless ~is_verbose
 ;;

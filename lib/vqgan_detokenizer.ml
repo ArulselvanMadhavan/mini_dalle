@@ -2,9 +2,7 @@ open Torch
 
 module ResnetBlock = struct
   type t =
-    { m : int
-    ; n : int
-    ; conv1 : Nn.t
+    { conv1 : Nn.t
     ; conv2 : Nn.t
     ; nin_shortcut : Nn.t option
     }
@@ -42,7 +40,7 @@ module ResnetBlock = struct
              n)
       else None
     in
-    { m; n; conv1; conv2; nin_shortcut }
+    { conv1; conv2; nin_shortcut }
   ;;
 
   let forward t x =
@@ -186,9 +184,7 @@ end
 
 module UpsampleBlock = struct
   type t =
-    { has_attention : bool
-    ; has_upsample : bool
-    ; attn : AttentionBlock.t array option
+    { attn : AttentionBlock.t array option
     ; block : ResnetBlock.t list
     ; upsample : Upsample.t option
     }
@@ -209,7 +205,7 @@ module UpsampleBlock = struct
     let upsample =
       if has_upsample then Some (Upsample.make vs log2_count_out) else None
     in
-    { has_attention; has_upsample; attn; block; upsample }
+    { attn; block; upsample }
   ;;
 
   let forward t h =
@@ -340,7 +336,7 @@ let make vs =
   { embedding; post_quant_conv; decoder }
 ;;
 
-let forward t is_seamless z =
+let forward t ~is_seamless z =
   let grid_size = Int.of_float (Float.sqrt (Float.of_int (List.hd (Tensor.shape z)))) in
   let token_count = Base.Int.pow (grid_size * 2) 4 in
   let z =
