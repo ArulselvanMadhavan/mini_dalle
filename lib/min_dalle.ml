@@ -165,7 +165,7 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.
       ~some:(fun i -> Torch_core.Device.Cuda i)
       device
   in
-  let vs = Torch.Var_store.create ~name:"dalle" ~device ~frozen:true () in
+  let vs = Torch.Var_store.create ~name:"encoder" ~device ~frozen:true () in
   let* tokenizer = init_tokenizer is_verbose is_mega vocab_path merges_path in
   let+ bart_encoder =
     let+ _ = download_encoder vs is_verbose is_mega encoder_params_path in
@@ -179,7 +179,17 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.
       ~vs
       ~device
   in
-  let bart_decoder = Dalle_bart_decoder.make vs ~image_vocab_count ~embed_count ~attention_head_count ~glu_embed_count ~layer_count ~device in
+  let vs = Torch.Var_store.create ~name:"decoder" ~device ~frozen:true () in
+  let bart_decoder =
+    Dalle_bart_decoder.make
+      vs
+      ~image_vocab_count
+      ~embed_count
+      ~attention_head_count
+      ~glu_embed_count
+      ~layer_count
+      ~device
+  in
   { models_root
   ; dtype
   ; device
@@ -200,7 +210,7 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.
   ; detoker_params_path
   ; tokenizer
   ; bart_encoder
-  ; bart_decoder    
+  ; bart_decoder
   }
 ;;
 
@@ -312,10 +322,26 @@ let generate_raw_image_stream
   in
   let settings =
     Tensor.of_float1
-      [| temperature; Float.of_int top_k; Float.of_int supercondition_factor |] ~device:t.device
+      [| temperature; Float.of_int top_k; Float.of_int supercondition_factor |]
+      ~device:t.device
   in
-  let prev_tokens = (Tensor.index image_tokens ~indices:[None; Some (Tensor.of_int0 0)]) in
-  let token_index = Tensor.index token_indices ~indices:[Some (Tensor.of_int0 0)] in
-  let _, _ = Dalle_bart_decoder.sample_tokens t.bart_decoder ~settings ~attention_mask ~encoder_state ~attention_state ~prev_tokens ~token_index in
+  (* FIXME *)
+  let prev_tokens =
+    Tensor.index image_tokens ~indices:[ None; Some (Tensor.of_int0 0) ]
+  in
+  let prev_tokens = Tensor.unsqueeze prev_tokens ~dim:1 in
+  let token_index = Tensor.index token_indices ~indices:[ Some (Tensor.of_int0 0) ] in
+  let decoder_state, attention_state_0 =
+    Dalle_bart_decoder.sample_tokens
+      t.bart_decoder
+      ~settings
+      ~attention_mask
+      ~encoder_state
+      ~attention_state
+      ~prev_tokens
+      ~token_index
+  in
+  Serialize.save decoder_state ~filename:"decoder_state.ot";
+  Serialize.save attention_state_0 ~filename:"attention_state_0.ot";
   encoder_state
 ;;

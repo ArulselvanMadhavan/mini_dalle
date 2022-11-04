@@ -34,7 +34,7 @@ module DecoderSelfAttention = struct
     let keys, values, attention_state =
       if token_count == 1
       then (
-        let batch_count = (Array.of_list (Tensor.shape decoder_state)).(0) in
+        let batch_count = List.hd (Tensor.shape decoder_state) in
         let attn_state_new = Tensor.concat [ keys; values ] ~dim:0 in
         let attn_state_new =
           Tensor.to_dtype
@@ -186,8 +186,11 @@ type t =
   ; layernorm_embedding : Nn.t
   ; final_ln : Nn.t
   ; lm_head : Nn.t
-  ; device : Device.t
   }
+
+(* let print_named_tensors = *)
+(*   List.iteri (fun idx (name, t) -> *)
+(*     Stdio.printf "%d)%s:%s\n" idx name (Tensor.shape_str t)) *)
 
 let make
   vs
@@ -208,7 +211,7 @@ let make
   let embed_positions =
     Layer.embeddings
       Var_store.(vs / "embed_positions")
-      ~num_embeddings:(Constants.image_token_count + 1)
+      ~num_embeddings:Constants.image_token_count
       ~embedding_dim:embed_count
   in
   let layers =
@@ -231,18 +234,12 @@ let make
       ~input_dim:embed_count
       (image_vocab_count + 1)
   in
+  (* print_named_tensors (Var_store.all_vars vs); *)
   (* FIXME *)
   Serialize.load_multi_
     ~named_tensors:(Var_store.all_vars vs)
     ~filename:"extracts/decodermega/decoder.ot";
-  { embed_tokens
-  ; embed_positions
-  ; layers
-  ; layernorm_embedding
-  ; final_ln
-  ; lm_head
-  ; device
-  }
+  { embed_tokens; embed_positions; layers; layernorm_embedding; final_ln; lm_head }
 ;;
 
 let forward t ~attention_mask ~encoder_state ~attention_state ~prev_tokens ~token_index =
@@ -251,7 +248,8 @@ let forward t ~attention_mask ~encoder_state ~attention_state ~prev_tokens ~toke
   let token_index = Tensor.repeat token_index ~repeats:[ image_count * 2; 1 ] in
   let prev_tokens = Tensor.repeat prev_tokens ~repeats:[ 2; 1 ] in
   let decoder_state = Layer.forward t.embed_tokens prev_tokens in
-  Tensor.(decoder_state += Layer.forward t.embed_positions token_index);
+  let pos_enc = Layer.forward t.embed_positions token_index in
+  let decoder_state = Tensor.(decoder_state + pos_enc) in
   let decoder_state = Layer.forward t.layernorm_embedding decoder_state in
   let decoder_state, attention_state =
     Base.List.foldi
@@ -306,6 +304,7 @@ let sample_tokens
     Tensor.to_float0_exn (Tensor.index settings ~indices:[ Some (Tensor.of_int0 2) ])
   in
   let logits = Tensor.index logits ~indices:[ None; Some (Tensor.of_int0 (-1)); None ] in
+  let logits = Tensor.unsqueeze ~dim:1 logits in
   let logits =
     Tensor.slice ~dim:2 ~start:None ~end_:(Some (Base.Int.pow 2 14)) ~step:1 logits
   in
@@ -322,18 +321,14 @@ let sample_tokens
     Tensor.(mul_scalar relevancy_logits (Scalar.f supercondition_factor))
   in
   let logits = Tensor.(diversity_logits + relevancy_logits) in
+  let logits = Tensor.squeeze logits in
   let logits_sorted, _ = Tensor.sort ~dim:(-1) logits ~descending:true in
   let logits_sorted_topk =
     Tensor.index
       logits_sorted
-      ~indices:
-        [ None
-        ; Some
-            (Tensor.arange
-               ~end_:(Scalar.i (Int.of_float top_k - 1))
-               ~options:(T Float, t.device))
-        ]
+      ~indices:[ None; Some (Tensor.of_int0 (Int.of_float top_k - 1)) ]
   in
+  let logits_sorted_topk = Tensor.unsqueeze ~dim:1 logits_sorted_topk in
   let is_kept =
     Tensor.to_dtype
       (Tensor.greater_equal_tensor logits logits_sorted_topk)
@@ -344,6 +339,7 @@ let sample_tokens
   let logits_top =
     Tensor.index logits_sorted ~indices:[ None; Some (Tensor.of_int0 0) ]
   in
+  let logits_top = Tensor.unsqueeze ~dim:1 logits_top in
   let logits = Tensor.(logits - logits_top) in
   let logits = Tensor.(div_scalar logits (Scalar.f temperature)) in
   let logits = Tensor.exp_ logits in
