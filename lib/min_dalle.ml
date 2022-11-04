@@ -329,6 +329,7 @@ let generate_raw_image_stream
   let attention_state = ref attention_state in
   let image_tokens = ref image_tokens in
   for i = 0 to Constants.image_token_count do
+    Caml.Gc.full_major ();
     let prev_tokens =
       Tensor.index !image_tokens ~indices:[ None; Some (Tensor.of_int0 i) ]
     in
