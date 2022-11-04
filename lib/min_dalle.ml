@@ -369,8 +369,9 @@ let generate_raw_image_stream
   done;
   let t = rm_bart_decoder t in
   Caml.Gc.full_major ();
+  let image_tokens = Tensor.slice !image_tokens ~dim:1 ~start:(Some 1) ~end_:None ~step:1 in
   let images =
-    Vqgan_detokenizer.forward (Option.get t.detokenizer) ~is_seamless !image_tokens
+    Vqgan_detokenizer.forward (Option.get t.detokenizer) ~is_seamless image_tokens
   in
   let _ = rm_detokenizer t in
   Caml.Gc.full_major ();
