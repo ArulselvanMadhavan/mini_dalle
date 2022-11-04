@@ -170,29 +170,31 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.
   let* tokenizer = init_tokenizer is_verbose is_mega vocab_path merges_path in
   let+ bart_encoder =
     let+ _ = download_encoder vs is_verbose is_mega encoder_params_path in
-    Dalle_bart_encoder.make
-      ~layer_count
-      ~embed_count
-      ~attention_head_count
-      ~text_vocab_count
-      ~text_token_count
-      ~glu_embed_count
-      ~vs
-      ~device
+    Some
+      (Dalle_bart_encoder.make
+         ~layer_count
+         ~embed_count
+         ~attention_head_count
+         ~text_vocab_count
+         ~text_token_count
+         ~glu_embed_count
+         ~vs
+         ~device)
   in
   let vs = Torch.Var_store.create ~name:"decoder" ~device ~frozen:true () in
   let bart_decoder =
-    Dalle_bart_decoder.make
-      vs
-      ~image_vocab_count
-      ~embed_count
-      ~attention_head_count
-      ~glu_embed_count
-      ~layer_count
-      ~device
+    Some
+      (Dalle_bart_decoder.make
+         vs
+         ~image_vocab_count
+         ~embed_count
+         ~attention_head_count
+         ~glu_embed_count
+         ~layer_count
+         ~device)
   in
   let vs = Torch.Var_store.create ~name:"detoker" ~device ~frozen:true () in
-  let detokenizer = Vqgan_detokenizer.make vs in
+  let detokenizer = Some (Vqgan_detokenizer.make vs) in
   { models_root
   ; dtype
   ; device
@@ -292,7 +294,11 @@ let generate_raw_image_stream
       ~accumulate:false
   in
   if t.is_verbose then Stdio.printf "Encoding text tokens\n" else ();
-  let encoder_state = Dalle_bart_encoder.forward t.bart_encoder ~text_tokens in
+  let encoder_state =
+    Dalle_bart_encoder.forward (Option.get t.bart_encoder) ~text_tokens
+  in
+  let t = rm_bart_encoder t in
+  Caml.Gc.full_major ();
   (* Torch.Serialize.save encoder_state ~filename:"encoder_state.ot"; *)
   let expanded_indices =
     Tensor.concat
@@ -333,7 +339,6 @@ let generate_raw_image_stream
       [| temperature; Float.of_int top_k; Float.of_int supercondition_factor |]
       ~device:t.device
   in
-  (* FIXME *)
   let attention_state = ref attention_state in
   let image_tokens = ref image_tokens in
   for i = 0 to Constants.image_token_count - 1 do
@@ -345,7 +350,7 @@ let generate_raw_image_stream
     let token_index = Tensor.index token_indices ~indices:[ Some (Tensor.of_int0 i) ] in
     let image_token, attention_state_0 =
       Dalle_bart_decoder.sample_tokens
-        t.bart_decoder
+        (Option.get t.bart_decoder)
         ~settings
         ~attention_mask
         ~encoder_state
@@ -361,7 +366,15 @@ let generate_raw_image_stream
            ~values:image_token
            ~accumulate:false;
     attention_state := attention_state_0
-  done
+  done;
+  let t = rm_bart_decoder t in
+  Caml.Gc.full_major ();
+  let images =
+    Vqgan_detokenizer.forward (Option.get t.detokenizer) ~is_seamless !image_tokens
+  in
+  let _ = rm_detokenizer t in
+  Caml.Gc.full_major ();
+  images
 ;;
 (* Serialize.save !image_tokens ~filename:"image_tokens.ot"; *)
 (* Serialize.save !attention_state ~filename:"attention_state.ot"; *)
