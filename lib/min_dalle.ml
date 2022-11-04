@@ -22,8 +22,9 @@ type t =
   ; decoder_params_path : string
   ; detoker_params_path : string
   ; tokenizer : Text_tokenizer.t
-  ; bart_encoder : Dalle_bart_encoder.t
-  ; bart_decoder : Dalle_bart_decoder.t
+  ; bart_encoder : Dalle_bart_encoder.t option
+  ; bart_decoder : Dalle_bart_decoder.t option
+  ; detokenizer : Vqgan_detokenizer.t option
   }
 
 type 'a with_config =
@@ -190,6 +191,8 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.
       ~layer_count
       ~device
   in
+  let vs = Torch.Var_store.create ~name:"detoker" ~device ~frozen:true () in
+  let detokenizer = Vqgan_detokenizer.make vs in
   { models_root
   ; dtype
   ; device
@@ -211,6 +214,7 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.
   ; tokenizer
   ; bart_encoder
   ; bart_decoder
+  ; detokenizer
   }
 ;;
 
@@ -238,7 +242,9 @@ let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
   m
 ;;
 
-let image_grid_from_tokens ~image_tokens ~is_seamless ~is_verbose = Tensor.empty
+let rm_bart_encoder t = { t with bart_encoder = None }
+let rm_bart_decoder t = { t with bart_decoder = None }
+let rm_detokenizer t = { t with detokenizer = None }
 
 let generate_raw_image_stream
   ~text
@@ -355,8 +361,7 @@ let generate_raw_image_stream
            ~values:image_token
            ~accumulate:false;
     attention_state := attention_state_0
-  done;
-  (* Serialize.save !image_tokens ~filename:"image_tokens.ot"; *)
-  (* Serialize.save !attention_state ~filename:"attention_state.ot"; *)
-  image_grid_from_tokens ~image_tokens ~is_seamless ~is_verbose
+  done
 ;;
+(* Serialize.save !image_tokens ~filename:"image_tokens.ot"; *)
+(* Serialize.save !attention_state ~filename:"attention_state.ot"; *)
