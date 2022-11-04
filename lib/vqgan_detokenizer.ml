@@ -143,9 +143,9 @@ module MiddleLayer = struct
     }
 
   let make vs =
-    let block_1 = ResnetBlock.make vs 9 9 in
-    let attn_1 = AttentionBlock.make vs in
-    let block_2 = ResnetBlock.make vs 9 9 in
+    let block_1 = ResnetBlock.make Var_store.(vs / "block_1") 9 9 in
+    let attn_1 = AttentionBlock.make Var_store.(vs / "attn_1") in
+    let block_2 = ResnetBlock.make Var_store.(vs / "block_2") 9 9 in
     { block_1; attn_1; block_2 }
   ;;
 
@@ -191,19 +191,25 @@ module UpsampleBlock = struct
 
   let make vs ~log2_count_in ~log2_count_out ~has_attention ~has_upsample =
     let block =
-      [ ResnetBlock.make vs log2_count_in log2_count_out
-      ; ResnetBlock.make vs log2_count_out log2_count_out
-      ; ResnetBlock.make vs log2_count_out log2_count_out
+      [ ResnetBlock.make Var_store.(vs / "block" // 0) log2_count_in log2_count_out
+      ; ResnetBlock.make Var_store.(vs / "block" // 1) log2_count_out log2_count_out
+      ; ResnetBlock.make Var_store.(vs / "block" // 2) log2_count_out log2_count_out
       ]
     in
     let attn =
       if has_attention
       then
-        Some [| AttentionBlock.make vs; AttentionBlock.make vs; AttentionBlock.make vs |]
+        Some
+          [| AttentionBlock.make Var_store.(vs / "attn" // 0)
+           ; AttentionBlock.make Var_store.(vs / "attn" // 1)
+           ; AttentionBlock.make Var_store.(vs / "attn" // 2)
+          |]
       else None
     in
     let upsample =
-      if has_upsample then Some (Upsample.make vs log2_count_out) else None
+      if has_upsample
+      then Some (Upsample.make Var_store.(vs / "upsample") log2_count_out)
+      else None
     in
     { attn; block; upsample }
   ;;
@@ -239,34 +245,34 @@ module Decoder = struct
         ~input_dim:(Base.Int.pow 2 8)
         (Base.Int.pow 2 9)
     in
-    let mid = MiddleLayer.make vs in
+    let mid = MiddleLayer.make Var_store.(vs / "mid") in
     let up =
       [ UpsampleBlock.make
-          vs
+          Var_store.(vs / "up" // 0)
           ~log2_count_in:7
           ~log2_count_out:7
           ~has_attention:false
           ~has_upsample:false
       ; UpsampleBlock.make
-          vs
+          Var_store.(vs / "up" // 1)
           ~log2_count_in:8
           ~log2_count_out:7
           ~has_attention:false
           ~has_upsample:true
       ; UpsampleBlock.make
-          vs
+          Var_store.(vs / "up" // 2)
           ~log2_count_in:8
           ~log2_count_out:8
           ~has_attention:false
           ~has_upsample:true
       ; UpsampleBlock.make
-          vs
+          Var_store.(vs / "up" // 3)
           ~log2_count_in:9
           ~log2_count_out:8
           ~has_attention:false
           ~has_upsample:true
       ; UpsampleBlock.make
-          vs
+          Var_store.(vs / "up" // 4)
           ~log2_count_in:9
           ~log2_count_out:9
           ~has_attention:true
