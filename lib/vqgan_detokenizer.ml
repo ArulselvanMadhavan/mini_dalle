@@ -292,12 +292,27 @@ module Decoder = struct
   let forward t z =
     let z = Layer.forward t.conv_in z in
     let z = MiddleLayer.forward t.mid z in
-    let z = Base.List.fold_left (Base.List.rev t.up) ~init:z ~f:(Base.Fn.flip UpsampleBlock.forward) in
-    let z = Tensor.group_norm z ~num_groups:(Base.Int.pow 2 5) ~eps:(1e-5) ~cudnn_enabled:false ~weight:None ~bias:None in
+    let z =
+      Base.List.fold_left
+        (Base.List.rev t.up)
+        ~init:z
+        ~f:(Base.Fn.flip UpsampleBlock.forward)
+    in
+    let z =
+      Tensor.group_norm
+        z
+        ~num_groups:(Base.Int.pow 2 5)
+        ~eps:1e-5
+        ~cudnn_enabled:false
+        ~weight:None
+        ~bias:None
+    in
     let z = Tensor.(z * sigmoid z) in
     Layer.forward t.conv_out z
+  ;;
 end
 
+(* VQGAN *)
 type t =
   { embedding : Nn.t
   ; post_quant_conv : Nn.t
@@ -321,5 +336,56 @@ let make vs =
       ~input_dim:embed_count
       embed_count
   in
-  { embedding; post_quant_conv }
+  let decoder = Decoder.make Var_store.(vs / "decoder") in
+  { embedding; post_quant_conv; decoder }
+;;
+
+let forward t is_seamless z =
+  let grid_size = Int.of_float (Float.sqrt (Float.of_int (List.hd (Tensor.shape z)))) in
+  let token_count = Base.Int.pow (grid_size * 2) 4 in
+  let z =
+    if is_seamless
+    then (
+      let z =
+        Tensor.view z ~size:[ grid_size; grid_size; Base.Int.pow 2 4; Base.Int.pow 2 4 ]
+      in
+      let z_shp = Array.of_list (Tensor.shape z) in
+      let z = Tensor.reshape z ~shape:[ z_shp.(0); z_shp.(1) * z_shp.(2); z_shp.(3) ] in
+      let z = Tensor.transpose z ~dim0:1 ~dim1:0 in
+      let z_shp = Array.of_list (Tensor.shape z) in
+      let z = Tensor.reshape z ~shape:[ z_shp.(0); z_shp.(1) * z_shp.(2) ] in
+      let z = Tensor.reshape z ~shape:[ -1; 1 ] in
+      let z = Layer.forward t.embedding z in
+      Tensor.view z ~size:[ 1; token_count; token_count; Base.Int.pow 2 8 ])
+    else (
+      let z = Layer.forward t.embedding z in
+      Tensor.view
+        z
+        ~size:
+          [ List.hd (Tensor.shape z)
+          ; Base.Int.pow 2 4
+          ; Base.Int.pow 2 4
+          ; Base.Int.pow 2 8
+          ])
+  in
+  let z = Tensor.permute z ~dims:[ 0; 3; 1; 2 ] in
+  let z = Tensor.contiguous z in
+  let z = Layer.forward t.post_quant_conv z in
+  let z = Decoder.forward t.decoder z in
+  let z = Tensor.permute z ~dims:[ 0; 2; 3; 1 ] in
+  let z = Tensor.clip z ~min:(Scalar.f 0.) ~max:(Scalar.f 1.) in
+  let z = Tensor.mul_scalar z (Scalar.i 255) in
+  if is_seamless
+  then Tensor.index z ~indices:[ Some (Tensor.of_int0 0) ]
+  else (
+    let z =
+      Tensor.view z ~size:[ grid_size; grid_size; Base.Int.pow 2 8; Base.Int.pow 2 8; 3 ]
+    in
+    let z_shp = Array.of_list (Tensor.shape z) in
+    let z =
+      Tensor.reshape z ~shape:[ z_shp.(0); z_shp.(1) * z_shp.(2); z_shp.(3); z_shp.(4) ]
+    in
+    let z = Tensor.transpose z ~dim0:1 ~dim1:0 in
+    let z_shp = Array.of_list (Tensor.shape z) in
+    Tensor.reshape z ~shape:[ z_shp.(0); z_shp.(1) * z_shp.(2); z_shp.(3) ])
 ;;
