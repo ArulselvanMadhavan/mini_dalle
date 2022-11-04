@@ -326,22 +326,34 @@ let generate_raw_image_stream
       ~device:t.device
   in
   (* FIXME *)
-  let prev_tokens =
-    Tensor.index image_tokens ~indices:[ None; Some (Tensor.of_int0 0) ]
-  in
-  let prev_tokens = Tensor.unsqueeze prev_tokens ~dim:1 in
-  let token_index = Tensor.index token_indices ~indices:[ Some (Tensor.of_int0 0) ] in
-  let decoder_state, attention_state_0 =
-    Dalle_bart_decoder.sample_tokens
-      t.bart_decoder
-      ~settings
-      ~attention_mask
-      ~encoder_state
-      ~attention_state
-      ~prev_tokens
-      ~token_index
-  in
-  Serialize.save decoder_state ~filename:"decoder_state.ot";
-  Serialize.save attention_state_0 ~filename:"attention_state_0.ot";
+  let attention_state = ref attention_state in
+  let image_tokens = ref image_tokens in
+  for i = 0 to Constants.image_token_count do
+    let prev_tokens =
+      Tensor.index !image_tokens ~indices:[ None; Some (Tensor.of_int0 i) ]
+    in
+    let prev_tokens = Tensor.unsqueeze prev_tokens ~dim:1 in
+    let token_index = Tensor.index token_indices ~indices:[ Some (Tensor.of_int0 i) ] in
+    let image_token, attention_state_0 =
+      Dalle_bart_decoder.sample_tokens
+        t.bart_decoder
+        ~settings
+        ~attention_mask
+        ~encoder_state
+        ~attention_state:!attention_state
+        ~prev_tokens
+        ~token_index
+    in
+    let image_token = Tensor.squeeze image_token in
+    image_tokens
+      := Tensor.index_put_
+           !image_tokens
+           ~indices:[ None; Some (Tensor.of_int0 i) ]
+           ~values:image_token
+           ~accumulate:false;
+    attention_state := attention_state_0
+  done;
+  Serialize.save !image_tokens ~filename:"image_tokens.ot";
+  Serialize.save !attention_state ~filename:"attention_state.ot";
   encoder_state
 ;;
