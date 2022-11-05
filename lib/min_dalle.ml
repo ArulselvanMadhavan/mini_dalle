@@ -21,7 +21,7 @@ type t =
   ; encoder_params_path : string
   ; decoder_params_path : string
   ; detoker_params_path : string
-  ; tokenizer : Text_tokenizer.t
+  ; tokenizer : Text_tokenizer.t (* Mutable? *)
   ; bart_encoder : Dalle_bart_encoder.t option
   ; bart_decoder : Dalle_bart_decoder.t option
   ; detokenizer : Vqgan_detokenizer.t option
@@ -379,5 +379,7 @@ let generate_raw_image_stream
   Caml.Gc.full_major ();
   images
 ;;
+
+let test_vqgan t = Torch.Serialize.load_multi_
 (* Serialize.save !image_tokens ~filename:"image_tokens.ot"; *)
 (* Serialize.save !attention_state ~filename:"attention_state.ot"; *)

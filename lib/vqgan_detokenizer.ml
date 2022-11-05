@@ -1,15 +1,64 @@
 open Torch
 
+module GroupNorm = struct
+  type t = { apply : Tensor.t -> Tensor.t }
+
+  let make vs ~num_groups ~num_channels =
+    let weight =
+      Var_store.new_var
+        vs
+        ~trainable:false
+        ~shape:[ num_channels ]
+        ~init:Ones
+        ~name:"weight"
+    in
+    let bias =
+      Var_store.new_var
+        vs
+        ~trainable:false
+        ~shape:[ num_channels ]
+        ~init:Zeros
+        ~name:"bias"
+    in
+    let apply xs =
+      Tensor.group_norm
+        ~num_groups
+        ~weight:(Some weight)
+        ~bias:(Some bias)
+        ~eps:1e-5
+        ~cudnn_enabled:false
+        xs
+    in
+    { apply }
+  ;;
+
+  let forward t xs = t.apply xs
+end
+
 module ResnetBlock = struct
   type t =
     { conv1 : Nn.t
     ; conv2 : Nn.t
     ; nin_shortcut : Nn.t option
+    ; norm1 : GroupNorm.t
+    ; norm2 : GroupNorm.t
     }
 
   let make vs log2_count_in log2_count_out =
     let m, n = Base.Int.pow 2 log2_count_in, Base.Int.pow 2 log2_count_out in
     let is_middle = m == n in
+    let norm1 =
+      GroupNorm.make
+        Var_store.(vs / "norm1")
+        ~num_groups:(Base.Int.pow 2 5)
+        ~num_channels:m
+    in
+    let norm2 =
+      GroupNorm.make
+        Var_store.(vs / "norm2")
+        ~num_groups:(Base.Int.pow 2 5)
+        ~num_channels:n
+    in
     let conv1 =
       Layer.conv2d
         Var_store.(vs / "conv1")
@@ -40,33 +89,15 @@ module ResnetBlock = struct
              n)
       else None
     in
-    { conv1; conv2; nin_shortcut }
+    { conv1; conv2; nin_shortcut; norm1; norm2 }
   ;;
 
   let forward t x =
     let h = x in
-    (* FIXME *)
-    let h =
-      Tensor.group_norm
-        h
-        ~num_groups:(Base.Int.pow 2 5)
-        ~cudnn_enabled:false
-        ~eps:1e-5
-        ~weight:None
-        ~bias:None
-    in
+    let h = GroupNorm.forward t.norm1 h in
     let h = Tensor.(h * sigmoid h) in
     let h = Layer.forward t.conv1 h in
-    (* FIXME *)
-    let h =
-      Tensor.group_norm
-        h
-        ~num_groups:(Base.Int.pow 2 5)
-        ~cudnn_enabled:false
-        ~eps:1e-5
-        ~weight:None
-        ~bias:None
-    in
+    let h = GroupNorm.forward t.norm2 h in
     let h = Tensor.(h * sigmoid h) in
     let h = Layer.forward t.conv2 h in
     let x = Option.fold ~some:(fun l -> Layer.forward l x) ~none:x t.nin_shortcut in
@@ -80,7 +111,7 @@ module AttentionBlock = struct
     ; k : Nn.t
     ; v : Nn.t
     ; proj_out : Nn.t
-    ; n : int
+    ; norm : GroupNorm.t
     }
 
   let make vs =
@@ -97,21 +128,19 @@ module AttentionBlock = struct
     let proj_out =
       Layer.conv2d Var_store.(vs / "proj_out") ~ksize:(1, 1) ~stride:(1, 1) ~input_dim:n n
     in
-    { q; k; v; proj_out; n }
+    let norm =
+      GroupNorm.make
+        Var_store.(vs / "norm")
+        ~num_groups:(Base.Int.pow 2 5)
+        ~num_channels:n
+    in
+    { q; k; v; proj_out; norm }
   ;;
 
   let forward t x =
     let n, m = Base.Int.pow 2 9, List.hd (Tensor.shape x) in
     let h = x in
-    let h =
-      Tensor.group_norm
-        h
-        ~num_groups:t.n
-        ~eps:1e-5
-        ~cudnn_enabled:false
-        ~weight:None
-        ~bias:None
-    in
+    let h = GroupNorm.forward t.norm h in
     let k = Layer.forward t.k h in
     let v = Layer.forward t.v h in
     let q = Layer.forward t.q h in
@@ -233,6 +262,7 @@ module Decoder = struct
     ; conv_out : Nn.t
     ; mid : MiddleLayer.t
     ; up : UpsampleBlock.t list
+    ; norm_out : GroupNorm.t
     }
 
   let make vs =
@@ -279,6 +309,12 @@ module Decoder = struct
           ~has_upsample:true
       ]
     in
+    let norm_out =
+      GroupNorm.make
+        Var_store.(vs / "norm_out")
+        ~num_groups:(Base.Int.pow 2 5)
+        ~num_channels:(Base.Int.pow 2 7)
+    in
     let conv_out =
       Layer.conv2d
         Var_store.(vs / "conv_out")
@@ -288,7 +324,7 @@ module Decoder = struct
         ~input_dim:(Base.Int.pow 2 7)
         3
     in
-    { conv_in; conv_out; mid; up }
+    { conv_in; conv_out; mid; up; norm_out }
   ;;
 
   let forward t z =
@@ -300,15 +336,7 @@ module Decoder = struct
         ~init:z
         ~f:(Base.Fn.flip UpsampleBlock.forward)
     in
-    let z =
-      Tensor.group_norm
-        z
-        ~num_groups:(Base.Int.pow 2 5)
-        ~eps:1e-5
-        ~cudnn_enabled:false
-        ~weight:None
-        ~bias:None
-    in
+    let z = GroupNorm.forward t.norm_out z in
     let z = Tensor.(z * sigmoid z) in
     Layer.forward t.conv_out z
   ;;
@@ -339,6 +367,9 @@ let make vs =
       embed_count
   in
   let decoder = Decoder.make Var_store.(vs / "decoder") in
+  Serialize.load_multi_
+    ~named_tensors:(Var_store.all_vars vs)
+    ~filename:"extracts/detokermega/detoker.ot";
   { embedding; post_quant_conv; decoder }
 ;;
 
