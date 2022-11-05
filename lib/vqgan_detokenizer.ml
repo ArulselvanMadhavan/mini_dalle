@@ -342,6 +342,10 @@ module Decoder = struct
   ;;
 end
 
+let print_named_tensors xs =
+  List.iteri (fun i (name, t) -> Stdio.printf "%d)%s|%s\n" i name (Tensor.shape_str t)) xs
+;;
+
 (* VQGAN *)
 type t =
   { embedding : Nn.t
@@ -367,6 +371,7 @@ let make vs =
       embed_count
   in
   let decoder = Decoder.make Var_store.(vs / "decoder") in
+  print_named_tensors (Var_store.all_vars vs);
   Serialize.load_multi_
     ~named_tensors:(Var_store.all_vars vs)
     ~filename:"extracts/detokermega/detoker.ot";
