@@ -34,6 +34,6 @@ ENV LIBTORCH=${HOME}/libtorch
 RUN rm -rf libtorch-cxx11-abi-shared-with-deps-1.13.0+cu117.zip
 
 RUN git clone https://github.com/LaurentMazare/ocaml-torch.git
-RUN cd ocaml-torch && opam install .
+RUN cd ocaml-torch && opam install -y .
 RUN opam install -y tls lwt_ssl cohttp-lwt-unix yojson merlin dune ppx_yojson_conv uutf
 WORKDIR ${HOME}
