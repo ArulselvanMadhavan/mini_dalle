@@ -185,29 +185,23 @@ module Upsample = struct
         ~scales_w:None
         x
     in
-    Stdio.printf "Upsample:%s\n" (Tensor.shape_str x);
-    Stdio.Out_channel.flush stdout;
-    Caml.Gc.full_major ();
-    let result = Layer.forward t.conv x in
-    Stdio.printf "up.conv:%s\n" (Tensor.shape_str result);
-    Stdio.Out_channel.flush stdout;
-    result
+    Layer.forward t.conv x
   ;;
 end
 
 module UpsampleBlock = struct
   type t =
     { attn : AttentionBlock.t array option
-    ; block : ResnetBlock.t list
+    ; block : ResnetBlock.t array
     ; upsample : Upsample.t option
     }
 
   let make vs ~log2_count_in ~log2_count_out ~has_attention ~has_upsample =
     let block =
-      [ ResnetBlock.make Var_store.(vs / "block" // 0) log2_count_in log2_count_out
-      ; ResnetBlock.make Var_store.(vs / "block" // 1) log2_count_out log2_count_out
-      ; ResnetBlock.make Var_store.(vs / "block" // 2) log2_count_out log2_count_out
-      ]
+      [| ResnetBlock.make Var_store.(vs / "block" // 0) log2_count_in log2_count_out
+       ; ResnetBlock.make Var_store.(vs / "block" // 1) log2_count_out log2_count_out
+       ; ResnetBlock.make Var_store.(vs / "block" // 2) log2_count_out log2_count_out
+      |]
     in
     let attn =
       if has_attention
@@ -228,24 +222,13 @@ module UpsampleBlock = struct
   ;;
 
   let forward t h =
-    Base.List.foldi
-      ~f:(fun i acc bl ->
-        Caml.Gc.full_major ();
-        Stdio.printf "%d)Res fwd:%s\n" i (Tensor.shape_str acc);
-        Stdio.Out_channel.flush Stdio.stdout;
-        let h = ResnetBlock.forward bl acc in
-        Caml.Gc.full_major ();
-        Stdio.printf "%d)attn fwd:%s\n" i (Tensor.shape_str h);
-        Stdio.Out_channel.flush Stdio.stdout;
-        let h =
-          Option.fold t.attn ~none:h ~some:(fun abl -> AttentionBlock.forward abl.(i) h)
-        in
-        Caml.Gc.full_major ();
-        Stdio.printf "%d)upsample fwd:%s\n" i (Tensor.shape_str h);
-        Stdio.Out_channel.flush Stdio.stdout;
-        Option.fold t.upsample ~none:h ~some:(fun us -> Upsample.forward us h))
-      ~init:h
-      t.block
+    let h = ref h in
+    for i = 0 to Array.length t.block - 1 do
+      h := ResnetBlock.forward t.block.(i) !h;
+      h := Option.fold t.attn ~none:!h ~some:(fun xs -> AttentionBlock.forward xs.(i) !h)
+    done;
+    let h = !h in
+    Option.fold t.upsample ~none:h ~some:(fun l -> Upsample.forward l h)
   ;;
 end
 
@@ -322,25 +305,14 @@ module Decoder = struct
 
   let forward t z =
     let z = Layer.forward t.conv_in z in
-    Caml.Gc.full_major ();
-    Stdio.printf "dec.conv_in.fwd:%s\n" (Tensor.shape_str z);
-    Stdio.Out_channel.flush stdout;
     let z = MiddleLayer.forward t.mid z in
-    Caml.Gc.full_major ();
-    Stdio.printf "dec.mid.fwd:%s\n" (Tensor.shape_str z);
-    Stdio.Out_channel.flush stdout;
     let z = ref z in
     let max_idx = Array.length t.up - 1 in
     for idx = 0 to max_idx do
       let idx = max_idx - idx in
-      Caml.Gc.full_major ();
-      Stdio.printf "dec.up.%d.fwd\n" idx;
-      Stdio.Out_channel.flush stdout;
       z := UpsampleBlock.forward t.up.(idx) !z
     done;
     let z = !z in
-    Stdio.printf "dec.up.list.fwd%s\n" (Tensor.shape_str z);
-    Stdio.Out_channel.flush stdout;
     let z = GroupNorm.forward t.norm_out z in
     let z = Tensor.(z * sigmoid z) in
     Layer.forward t.conv_out z
@@ -411,18 +383,10 @@ let forward t ~is_seamless z =
           ; Base.Int.pow 2 8
           ])
   in
-  Caml.Gc.full_major ();
-  Stdio.printf "Z_shape:%s\n" (Tensor.shape_str z);
-  Stdio.Out_channel.flush stdout;
   let z = Tensor.permute z ~dims:[ 0; 3; 1; 2 ] in
   let z = Tensor.contiguous z in
   let z = Layer.forward t.post_quant_conv z in
-  Caml.Gc.full_major ();
-  Stdio.printf "Dec fwd:%s\n" (Tensor.shape_str z);
-  Stdio.Out_channel.flush stdout;
   let z = Decoder.forward t.decoder z in
-  Stdio.printf "Dec fwd done:%s\n" (Tensor.shape_str z);
-  Stdio.Out_channel.flush stdout;
   let z = Tensor.permute z ~dims:[ 0; 2; 3; 1 ] in
   let z = Tensor.clip z ~min:(Scalar.f 0.) ~max:(Scalar.f 1.) in
   let z = Tensor.mul_scalar z (Scalar.i 255) in
