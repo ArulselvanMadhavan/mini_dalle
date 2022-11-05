@@ -380,7 +380,7 @@ let make vs =
 
 let forward t ~is_seamless z =
   let grid_size = Int.of_float (Float.sqrt (Float.of_int (List.hd (Tensor.shape z)))) in
-  let token_count = Base.Int.pow (grid_size * 2) 4 in
+  let token_count = grid_size * Base.Int.pow 2 4 in
   let z =
     if is_seamless
     then (
@@ -393,6 +393,7 @@ let forward t ~is_seamless z =
       let z_shp = Array.of_list (Tensor.shape z) in
       let z = Tensor.reshape z ~shape:[ z_shp.(0); z_shp.(1) * z_shp.(2) ] in
       let z = Tensor.reshape z ~shape:[ -1; 1 ] in
+      Stdio.printf "Z_shape:%s\n" (Tensor.shape_str z);
       let z = Layer.forward t.embedding z in
       Tensor.view z ~size:[ 1; token_count; token_count; Base.Int.pow 2 8 ])
     else (
@@ -406,9 +407,11 @@ let forward t ~is_seamless z =
           ; Base.Int.pow 2 8
           ])
   in
+  Stdio.printf "Z_shape:%s\n" (Tensor.shape_str z);
   let z = Tensor.permute z ~dims:[ 0; 3; 1; 2 ] in
   let z = Tensor.contiguous z in
   let z = Layer.forward t.post_quant_conv z in
+  Stdio.printf "Dec fwd:%s\n" (Tensor.shape_str z);
   let z = Decoder.forward t.decoder z in
   let z = Tensor.permute z ~dims:[ 0; 2; 3; 1 ] in
   let z = Tensor.clip z ~min:(Scalar.f 0.) ~max:(Scalar.f 1.) in

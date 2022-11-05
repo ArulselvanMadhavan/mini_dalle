@@ -382,15 +382,15 @@ let generate_raw_image_stream
   images
 ;;
 
-let image_grid_from_tokens t =
+let image_grid_from_tokens _t =
   let open Torch in
   let image_tokens = Serialize.load ~filename:"image_tokens.ot" in
-  let image_tokens =
+  let _image_tokens =
     Tensor.slice ~dim:1 ~start:(Some 1) ~end_:None ~step:1 image_tokens
   in
-  let _images =
-    Vqgan_detokenizer.forward (Option.get t.detokenizer) ~is_seamless:false image_tokens
-  in
+  (* let _images = *)
+  (*   Vqgan_detokenizer.forward (Option.get t.detokenizer) ~is_seamless:false image_tokens *)
+  (* in *)
   ()
 ;;
 (* let test_vqgan t = Torch.Serialize.load_multi_ *)
