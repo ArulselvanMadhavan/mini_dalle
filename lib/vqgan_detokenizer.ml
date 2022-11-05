@@ -60,20 +60,20 @@ module ResnetBlock = struct
         ~num_channels:n
     in
     let conv1 =
-      Layer.conv2d
+      Layer.conv2d_
         Var_store.(vs / "conv1")
-        ~ksize:(3, 3)
-        ~stride:(1, 1)
-        ~padding:(1, 1)
+        ~ksize:3
+        ~stride:1
+        ~padding:1
         ~input_dim:m
         n
     in
     let conv2 =
-      Layer.conv2d
+      Layer.conv2d_
         Var_store.(vs / "conv2")
-        ~ksize:(3, 3)
-        ~stride:(1, 1)
-        ~padding:(1, 1)
+        ~ksize:3
+        ~stride:1
+        ~padding:1
         ~input_dim:n
         n
     in
@@ -81,10 +81,10 @@ module ResnetBlock = struct
       if not is_middle
       then
         Some
-          (Layer.conv2d
+          (Layer.conv2d_
              Var_store.(vs / "nin_shortcut")
-             ~ksize:(1, 1)
-             ~stride:(1, 1)
+             ~ksize:1
+             ~stride:1
              ~input_dim:m
              n)
       else None
@@ -117,16 +117,16 @@ module AttentionBlock = struct
   let make vs =
     let n = Base.Int.pow 2 9 in
     let q =
-      Layer.conv2d Var_store.(vs / "q") ~ksize:(1, 1) ~stride:(1, 1) ~input_dim:n n
+      Layer.conv2d_ Var_store.(vs / "q") ~ksize:1 ~stride:1 ~input_dim:n n
     in
     let k =
-      Layer.conv2d Var_store.(vs / "k") ~ksize:(1, 1) ~stride:(1, 1) ~input_dim:n n
+      Layer.conv2d_ Var_store.(vs / "k") ~ksize:1 ~stride:1 ~input_dim:n n
     in
     let v =
-      Layer.conv2d Var_store.(vs / "v") ~ksize:(1, 1) ~stride:(1, 1) ~input_dim:n n
+      Layer.conv2d_ Var_store.(vs / "v") ~ksize:1 ~stride:1 ~input_dim:n n
     in
     let proj_out =
-      Layer.conv2d Var_store.(vs / "proj_out") ~ksize:(1, 1) ~stride:(1, 1) ~input_dim:n n
+      Layer.conv2d_ Var_store.(vs / "proj_out") ~ksize:1 ~stride:1 ~input_dim:n n
     in
     let norm =
       GroupNorm.make
@@ -189,11 +189,11 @@ module Upsample = struct
   let make vs log2_count =
     let n = Base.Int.pow 2 log2_count in
     let conv =
-      Layer.conv2d
+      Layer.conv2d_
         Var_store.(vs / "conv")
-        ~ksize:(3, 3)
-        ~stride:(1, 1)
-        ~padding:(1, 1)
+        ~ksize:3
+        ~stride:1
+        ~padding:1
         ~input_dim:n
         n
     in
@@ -279,11 +279,11 @@ module Decoder = struct
 
   let make vs =
     let conv_in =
-      Layer.conv2d
+      Layer.conv2d_
         Var_store.(vs / "conv_in")
-        ~ksize:(3, 3)
-        ~stride:(1, 1)
-        ~padding:(1, 1)
+        ~ksize:3
+        ~stride:1
+        ~padding:1
         ~input_dim:(Base.Int.pow 2 8)
         (Base.Int.pow 2 9)
     in
@@ -328,11 +328,11 @@ module Decoder = struct
         ~num_channels:(Base.Int.pow 2 7)
     in
     let conv_out =
-      Layer.conv2d
+      Layer.conv2d_
         Var_store.(vs / "conv_out")
-        ~ksize:(3, 3)
-        ~stride:(1, 1)
-        ~padding:(1, 1)
+        ~ksize:3
+        ~stride:1
+        ~padding:1
         ~input_dim:(Base.Int.pow 2 7)
         3
     in
@@ -387,10 +387,10 @@ let make vs =
       ~embedding_dim:embed_count
   in
   let post_quant_conv =
-    Layer.conv2d
+    Layer.conv2d_
       Var_store.(vs / "post_quant_conv")
-      ~ksize:(1, 1)
-      ~stride:(1, 1)
+      ~ksize:1
+      ~stride:1
       ~input_dim:embed_count
       embed_count
   in
