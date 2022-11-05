@@ -28,11 +28,12 @@ WORKDIR ${HOME}
 # Opam installs
 
 RUN opam init -a -y -c ${OCAML_COMPILER} --disable-sandboxing
-RUN wget --no-check-certificate https://download.pytorch.org/libtorch/cu102/libtorch-cxx11-abi-shared-with-deps-1.13.0%2Bcu102.zip
-RUN unzip libtorch-cxx11-abi-shared-with-deps-1.13.0+cu102.zip
+RUN wget --no-check-certificate https://download.pytorch.org/libtorch/cu117/libtorch-cxx11-abi-shared-with-deps-1.13.0%2Bcu117.zip
+RUN unzip libtorch-cxx11-abi-shared-with-deps-1.13.0+cu117.zip
 ENV LIBTORCH=${HOME}/libtorch
-RUN rm -rf libtorch-cxx11-abi-shared-with-deps-1.13.0+cu102.zip
+RUN rm -rf libtorch-cxx11-abi-shared-with-deps-1.13.0+cu117.zip
 
-RUN opam install -y utop torch
+RUN git clone https://github.com/LaurentMazare/ocaml-torch.git
+RUN cd ocaml-torch && opam install .
 RUN opam install -y tls lwt_ssl cohttp-lwt-unix yojson merlin dune ppx_yojson_conv uutf
 WORKDIR ${HOME}

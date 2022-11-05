@@ -149,10 +149,7 @@ module AttentionBlock = struct
     let q = Tensor.reshape q ~shape:[ m; n; -1 ] in
     let q = Tensor.permute q ~dims:[ 0; 2; 1 ] in
     let w = Tensor.bmm q ~mat2:k in
-    let w =
-      Tensor.(
-        div_scalar w (Scalar.i (Base.Int.of_float (Base.Float.sqrt (Float.of_int n)))))
-    in
+    let w = Tensor.(div_scalar w (Scalar.f (Base.Float.sqrt (Float.of_int n)))) in
     let w = Tensor.softmax w ~dim:2 ~dtype:(T Float) in
     let w = Tensor.permute w ~dims:[ 0; 2; 1 ] in
     let h = Tensor.bmm v ~mat2:w in
@@ -207,7 +204,13 @@ module Upsample = struct
     let output_size = Base.List.take (Base.List.rev (Tensor.shape x)) 2 in
     let output_size = Base.List.map ~f:(Int.mul 2) output_size in
     let x = Tensor.upsample_nearest2d x ~output_size ~scales_h:None ~scales_w:None in
-    Layer.forward t.conv x
+    Stdio.printf "Upsample:%s\n" (Tensor.shape_str x);
+    Stdio.Out_channel.flush stdout;
+    Caml.Gc.full_major ();
+    let result = Layer.forward t.conv x in
+    Stdio.printf "up.conv:%s\n" (Tensor.shape_str result);
+    Stdio.Out_channel.flush stdout;
+    result
   ;;
 end
 
@@ -246,10 +249,19 @@ module UpsampleBlock = struct
   let forward t h =
     Base.List.foldi
       ~f:(fun i acc bl ->
+        Caml.Gc.full_major ();
+        Stdio.printf "%d)Res fwd:%s\n" i (Tensor.shape_str acc);
+        Stdio.Out_channel.flush Stdio.stdout;
         let h = ResnetBlock.forward bl acc in
+        Caml.Gc.full_major ();
+        Stdio.printf "%d)attn fwd:%s\n" i (Tensor.shape_str h);
+        Stdio.Out_channel.flush Stdio.stdout;
         let h =
           Option.fold t.attn ~none:h ~some:(fun abl -> AttentionBlock.forward abl.(i) h)
         in
+        Caml.Gc.full_major ();
+        Stdio.printf "%d)upsample fwd:%s\n" i (Tensor.shape_str h);
+        Stdio.Out_channel.flush Stdio.stdout;
         Option.fold t.upsample ~none:h ~some:(fun us -> Upsample.forward us h))
       ~init:h
       t.block
@@ -261,7 +273,7 @@ module Decoder = struct
     { conv_in : Nn.t
     ; conv_out : Nn.t
     ; mid : MiddleLayer.t
-    ; up : UpsampleBlock.t list
+    ; up : UpsampleBlock.t array
     ; norm_out : GroupNorm.t
     }
 
@@ -277,7 +289,7 @@ module Decoder = struct
     in
     let mid = MiddleLayer.make Var_store.(vs / "mid") in
     let up =
-      [ UpsampleBlock.make
+      [| UpsampleBlock.make
           Var_store.(vs / "up" // 0)
           ~log2_count_in:7
           ~log2_count_out:7
@@ -307,7 +319,7 @@ module Decoder = struct
           ~log2_count_out:9
           ~has_attention:true
           ~has_upsample:true
-      ]
+  |]
     in
     let norm_out =
       GroupNorm.make
@@ -329,13 +341,25 @@ module Decoder = struct
 
   let forward t z =
     let z = Layer.forward t.conv_in z in
+    Caml.Gc.full_major ();
+    Stdio.printf "dec.conv_in.fwd:%s\n" (Tensor.shape_str z);
+    Stdio.Out_channel.flush stdout;
     let z = MiddleLayer.forward t.mid z in
-    let z =
-      Base.List.fold_left
-        (Base.List.rev t.up)
-        ~init:z
-        ~f:(Base.Fn.flip UpsampleBlock.forward)
-    in
+    Caml.Gc.full_major ();
+    Stdio.printf "dec.mid.fwd:%s\n" (Tensor.shape_str z);
+    Stdio.Out_channel.flush stdout;
+    let z = ref z in
+    let max_idx = (Array.length t.up - 1) in
+    for idx = 0 to max_idx do
+      let idx = max_idx - idx in
+      Caml.Gc.full_major ();
+        Stdio.printf "dec.up.%d.fwd\n" idx;
+        Stdio.Out_channel.flush stdout;      
+      z := UpsampleBlock.forward t.up.(idx) !z;
+    done;
+    let z = !z in
+    Stdio.printf "dec.up.list.fwd%s\n" (Tensor.shape_str z);
+    Stdio.Out_channel.flush stdout;
     let z = GroupNorm.forward t.norm_out z in
     let z = Tensor.(z * sigmoid z) in
     Layer.forward t.conv_out z
@@ -393,7 +417,6 @@ let forward t ~is_seamless z =
       let z_shp = Array.of_list (Tensor.shape z) in
       let z = Tensor.reshape z ~shape:[ z_shp.(0); z_shp.(1) * z_shp.(2) ] in
       let z = Tensor.reshape z ~shape:[ -1; 1 ] in
-      Stdio.printf "Z_shape:%s\n" (Tensor.shape_str z);
       let z = Layer.forward t.embedding z in
       Tensor.view z ~size:[ 1; token_count; token_count; Base.Int.pow 2 8 ])
     else (
@@ -407,12 +430,18 @@ let forward t ~is_seamless z =
           ; Base.Int.pow 2 8
           ])
   in
+  Caml.Gc.full_major ();
   Stdio.printf "Z_shape:%s\n" (Tensor.shape_str z);
+  Stdio.Out_channel.flush stdout;
   let z = Tensor.permute z ~dims:[ 0; 3; 1; 2 ] in
   let z = Tensor.contiguous z in
   let z = Layer.forward t.post_quant_conv z in
+  Caml.Gc.full_major ();
   Stdio.printf "Dec fwd:%s\n" (Tensor.shape_str z);
+  Stdio.Out_channel.flush stdout;
   let z = Decoder.forward t.decoder z in
+  Stdio.printf "Dec fwd done:%s\n" (Tensor.shape_str z);
+  Stdio.Out_channel.flush stdout;
   let z = Tensor.permute z ~dims:[ 0; 2; 3; 1 ] in
   let z = Tensor.clip z ~min:(Scalar.f 0.) ~max:(Scalar.f 1.) in
   let z = Tensor.mul_scalar z (Scalar.i 255) in

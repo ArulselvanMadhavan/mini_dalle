@@ -60,11 +60,13 @@ let forward t ~keys ~values ~queries ~attention_mask =
   in
   let attention_bias = Tensor.(add_scalar (neg attention_mask) (Scalar.int 1)) in
   let attention_bias = Tensor.(mul_scalar attention_bias (Scalar.float (-1e12))) in
-  let attention_weights = Tensor.einsum ~equation:"bqhc,bkhc->bhqk" [ queries; keys ] in
+  let attention_weights =
+    Tensor.einsum ~equation:"bqhc,bkhc->bhqk" [ queries; keys ] ~path:None
+  in
   let attention_weights = Tensor.(attention_weights + attention_bias) in
   let attention_weights = Tensor.softmax attention_weights ~dim:(-1) ~dtype:(T Float) in
   let attention_output =
-    Tensor.einsum ~equation:"bhqk,bkhc->bqhc" [ attention_weights; values ]
+    Tensor.einsum ~equation:"bhqk,bkhc->bqhc" [ attention_weights; values ] ~path:None
   in
   let shape =
     List.append (Base.List.take (Tensor.shape attention_output) 2) [ t.embed_count ]
