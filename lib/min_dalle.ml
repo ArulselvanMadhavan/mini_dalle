@@ -170,30 +170,32 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.
   let* tokenizer = init_tokenizer is_verbose is_mega vocab_path merges_path in
   let+ bart_encoder =
     let+ _ = download_encoder vs is_verbose is_mega encoder_params_path in
-    Some
-      (Dalle_bart_encoder.make
-         ~layer_count
-         ~embed_count
-         ~attention_head_count
-         ~text_vocab_count
-         ~text_token_count
-         ~glu_embed_count
-         ~vs
-         ~device)
+    None
+    (* Some *)
+    (*   (Dalle_bart_encoder.make *)
+    (*      ~layer_count *)
+    (*      ~embed_count *)
+    (*      ~attention_head_count *)
+    (*      ~text_vocab_count *)
+    (*      ~text_token_count *)
+    (*      ~glu_embed_count *)
+    (*      ~vs *)
+    (*      ~device) *)
   in
-  let vs = Torch.Var_store.create ~name:"decoder" ~device ~frozen:true () in
+  let _vs = Torch.Var_store.create ~name:"decoder" ~device ~frozen:true () in
   let bart_decoder =
-    Some
-      (Dalle_bart_decoder.make
-         vs
-         ~image_vocab_count
-         ~embed_count
-         ~attention_head_count
-         ~glu_embed_count
-         ~layer_count
-         ~device)
+    None
+    (* Some *)
+    (*   (Dalle_bart_decoder.make *)
+    (*      vs *)
+    (*      ~image_vocab_count *)
+    (*      ~embed_count *)
+    (*      ~attention_head_count *)
+    (*      ~glu_embed_count *)
+    (*      ~layer_count *)
+    (*      ~device) *)
   in
-  let vs = Torch.Var_store.create ~name:"detoker" ~device ~frozen:true () in
+  let _vs = Torch.Var_store.create ~name:"detoker" ~device ~frozen:true () in
   let detokenizer = Some (Vqgan_detokenizer.make vs) in
   { models_root
   ; dtype
@@ -380,6 +382,13 @@ let generate_raw_image_stream
   images
 ;;
 
-let test_vqgan t = Torch.Serialize.load_multi_
+let image_grid_from_tokens t =
+  let open Torch in
+  let image_tokens = Serialize.load ~filename:"image_tokens.ot" in
+  let image_tokens = Tensor.slice ~dim:1 ~start:(Some 1) ~end_:None ~step:1 image_tokens in
+  let _images = Vqgan_detokenizer.forward (Option.get t.detokenizer) ~is_seamless:false image_tokens in
+  ()
+;;
+(* let test_vqgan t = Torch.Serialize.load_multi_ *)
 (* Serialize.save !image_tokens ~filename:"image_tokens.ot"; *)
 (* Serialize.save !attention_state ~filename:"attention_state.ot"; *)

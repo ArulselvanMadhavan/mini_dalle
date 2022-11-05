@@ -23,3 +23,5 @@ val generate_raw_image_stream
   -> ?supercondition_factor:int
   -> t
   -> Tensor.t
+
+val image_grid_from_tokens : t -> unit
