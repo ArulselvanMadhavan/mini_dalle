@@ -60,22 +60,10 @@ module ResnetBlock = struct
         ~num_channels:n
     in
     let conv1 =
-      Layer.conv2d_
-        Var_store.(vs / "conv1")
-        ~ksize:3
-        ~stride:1
-        ~padding:1
-        ~input_dim:m
-        n
+      Layer.conv2d_ Var_store.(vs / "conv1") ~ksize:3 ~stride:1 ~padding:1 ~input_dim:m n
     in
     let conv2 =
-      Layer.conv2d_
-        Var_store.(vs / "conv2")
-        ~ksize:3
-        ~stride:1
-        ~padding:1
-        ~input_dim:n
-        n
+      Layer.conv2d_ Var_store.(vs / "conv2") ~ksize:3 ~stride:1 ~padding:1 ~input_dim:n n
     in
     let nin_shortcut =
       if not is_middle
@@ -116,15 +104,9 @@ module AttentionBlock = struct
 
   let make vs =
     let n = Base.Int.pow 2 9 in
-    let q =
-      Layer.conv2d_ Var_store.(vs / "q") ~ksize:1 ~stride:1 ~input_dim:n n
-    in
-    let k =
-      Layer.conv2d_ Var_store.(vs / "k") ~ksize:1 ~stride:1 ~input_dim:n n
-    in
-    let v =
-      Layer.conv2d_ Var_store.(vs / "v") ~ksize:1 ~stride:1 ~input_dim:n n
-    in
+    let q = Layer.conv2d_ Var_store.(vs / "q") ~ksize:1 ~stride:1 ~input_dim:n n in
+    let k = Layer.conv2d_ Var_store.(vs / "k") ~ksize:1 ~stride:1 ~input_dim:n n in
+    let v = Layer.conv2d_ Var_store.(vs / "v") ~ksize:1 ~stride:1 ~input_dim:n n in
     let proj_out =
       Layer.conv2d_ Var_store.(vs / "proj_out") ~ksize:1 ~stride:1 ~input_dim:n n
     in
@@ -189,21 +171,20 @@ module Upsample = struct
   let make vs log2_count =
     let n = Base.Int.pow 2 log2_count in
     let conv =
-      Layer.conv2d_
-        Var_store.(vs / "conv")
-        ~ksize:3
-        ~stride:1
-        ~padding:1
-        ~input_dim:n
-        n
+      Layer.conv2d_ Var_store.(vs / "conv") ~ksize:3 ~stride:1 ~padding:1 ~input_dim:n n
     in
     { conv }
   ;;
 
   let forward t x =
-    let output_size = Base.List.take (Base.List.rev (Tensor.shape x)) 2 in
-    let output_size = Base.List.map ~f:(Int.mul 2) output_size in
-    let x = Tensor.upsample_nearest2d x ~output_size ~scales_h:None ~scales_w:None in
+    let _, _, h, w = Tensor.shape4_exn x in
+    let x =
+      Tensor.upsample_nearest2d
+        ~output_size:[ 2 * h; 2 * w ]
+        ~scales_h:None
+        ~scales_w:None
+        x
+    in
     Stdio.printf "Upsample:%s\n" (Tensor.shape_str x);
     Stdio.Out_channel.flush stdout;
     Caml.Gc.full_major ();
@@ -290,36 +271,36 @@ module Decoder = struct
     let mid = MiddleLayer.make Var_store.(vs / "mid") in
     let up =
       [| UpsampleBlock.make
-          Var_store.(vs / "up" // 0)
-          ~log2_count_in:7
-          ~log2_count_out:7
-          ~has_attention:false
-          ~has_upsample:false
-      ; UpsampleBlock.make
-          Var_store.(vs / "up" // 1)
-          ~log2_count_in:8
-          ~log2_count_out:7
-          ~has_attention:false
-          ~has_upsample:true
-      ; UpsampleBlock.make
-          Var_store.(vs / "up" // 2)
-          ~log2_count_in:8
-          ~log2_count_out:8
-          ~has_attention:false
-          ~has_upsample:true
-      ; UpsampleBlock.make
-          Var_store.(vs / "up" // 3)
-          ~log2_count_in:9
-          ~log2_count_out:8
-          ~has_attention:false
-          ~has_upsample:true
-      ; UpsampleBlock.make
-          Var_store.(vs / "up" // 4)
-          ~log2_count_in:9
-          ~log2_count_out:9
-          ~has_attention:true
-          ~has_upsample:true
-  |]
+           Var_store.(vs / "up" // 0)
+           ~log2_count_in:7
+           ~log2_count_out:7
+           ~has_attention:false
+           ~has_upsample:false
+       ; UpsampleBlock.make
+           Var_store.(vs / "up" // 1)
+           ~log2_count_in:8
+           ~log2_count_out:7
+           ~has_attention:false
+           ~has_upsample:true
+       ; UpsampleBlock.make
+           Var_store.(vs / "up" // 2)
+           ~log2_count_in:8
+           ~log2_count_out:8
+           ~has_attention:false
+           ~has_upsample:true
+       ; UpsampleBlock.make
+           Var_store.(vs / "up" // 3)
+           ~log2_count_in:9
+           ~log2_count_out:8
+           ~has_attention:false
+           ~has_upsample:true
+       ; UpsampleBlock.make
+           Var_store.(vs / "up" // 4)
+           ~log2_count_in:9
+           ~log2_count_out:9
+           ~has_attention:true
+           ~has_upsample:true
+      |]
     in
     let norm_out =
       GroupNorm.make
@@ -349,13 +330,13 @@ module Decoder = struct
     Stdio.printf "dec.mid.fwd:%s\n" (Tensor.shape_str z);
     Stdio.Out_channel.flush stdout;
     let z = ref z in
-    let max_idx = (Array.length t.up - 1) in
+    let max_idx = Array.length t.up - 1 in
     for idx = 0 to max_idx do
       let idx = max_idx - idx in
       Caml.Gc.full_major ();
-        Stdio.printf "dec.up.%d.fwd\n" idx;
-        Stdio.Out_channel.flush stdout;      
-      z := UpsampleBlock.forward t.up.(idx) !z;
+      Stdio.printf "dec.up.%d.fwd\n" idx;
+      Stdio.Out_channel.flush stdout;
+      z := UpsampleBlock.forward t.up.(idx) !z
     done;
     let z = !z in
     Stdio.printf "dec.up.list.fwd%s\n" (Tensor.shape_str z);
