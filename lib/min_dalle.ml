@@ -389,9 +389,10 @@ let image_grid_from_tokens t =
     Tensor.slice ~dim:1 ~start:(Some 1) ~end_:None ~step:1 image_tokens
   in
   let image_tokens = Tensor.to_device ~device:t.device image_tokens in
-  let _images =
+  let images =
     Vqgan_detokenizer.forward (Option.get t.detokenizer) ~is_seamless:false image_tokens
   in
+  Stdio.printf "Image_shape:%s\n" (Tensor.shape_str images);
   ()
 ;;
 (* let test_vqgan t = Torch.Serialize.load_multi_ *)
