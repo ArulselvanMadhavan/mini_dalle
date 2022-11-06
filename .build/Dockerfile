@@ -6,7 +6,7 @@ ARG GID
 ARG OCAML_COMPILER
 USER root
 
-RUN apt-get update && apt-get install -y sudo git inotify-tools build-essential libssl-dev liblapacke-dev libopenblas-dev pkg-config zlib1g-dev libffi-dev libgmp-dev libpcre3-dev tmux fish software-properties-common wget netbase
+RUN apt-get update && apt-get install -y sudo git inotify-tools build-essential libssl-dev liblapacke-dev libopenblas-dev pkg-config zlib1g-dev libffi-dev libgmp-dev libpcre3-dev tmux fish software-properties-common wget netbase python
 RUN add-apt-repository ppa:avsm/ppa
 RUN apt update
 RUN apt install -y opam
@@ -35,5 +35,5 @@ RUN rm -rf libtorch-cxx11-abi-shared-with-deps-1.13.0+cu117.zip
 
 RUN git clone https://github.com/LaurentMazare/ocaml-torch.git
 RUN cd ocaml-torch && opam install -y .
-RUN opam install -y tls lwt_ssl cohttp-lwt-unix yojson merlin dune ppx_yojson_conv uutf utop
+RUN opam install -y tls lwt_ssl cohttp-lwt-unix yojson merlin dune ppx_yojson_conv uutf utop npy
 WORKDIR ${HOME}

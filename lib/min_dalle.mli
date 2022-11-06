@@ -24,5 +24,4 @@ val generate_raw_image_stream
   -> t
   -> Tensor.t
 
-val image_grid_from_tokens : t -> unit
 val fetch_file : string -> bool -> bool -> string -> unit Lwt.t
