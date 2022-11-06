@@ -328,6 +328,7 @@ type t =
   { embedding : Nn.t
   ; post_quant_conv : Nn.t
   ; decoder : Decoder.t
+  ; vs : Var_store.t
   }
 
 let make vs =
@@ -348,14 +349,15 @@ let make vs =
       embed_count
   in
   let decoder = Decoder.make Var_store.(vs / "decoder") in
-  print_named_tensors (Var_store.all_vars vs);
-  Serialize.load_multi_
-    ~named_tensors:(Var_store.all_vars vs)
-    ~filename:"extracts/detokermega/detoker.ot";
-  { embedding; post_quant_conv; decoder }
+  (* print_named_tensors (Var_store.all_vars vs); *)
+  { embedding; post_quant_conv; decoder; vs }
 ;;
 
 let forward t ~is_seamless z =
+  Serialize.load_multi_
+    ~named_tensors:(Var_store.all_vars t.vs)
+    ~filename:"extracts/detokermega/detoker.ot";
+  Stdio.printf "****Detoker complete*****\n";
   let grid_size = Int.of_float (Float.sqrt (Float.of_int (List.hd (Tensor.shape z)))) in
   let token_count = grid_size * Base.Int.pow 2 4 in
   let z =

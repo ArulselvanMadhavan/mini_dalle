@@ -373,6 +373,7 @@ let generate_raw_image_stream
   let images =
     Vqgan_detokenizer.forward (Option.get t.detokenizer) ~is_seamless image_tokens
   in
+  t.detokenizer <- None;
   Caml.Gc.full_major ();
   images
 ;;
