@@ -4,6 +4,7 @@ services:
     build:
       context: .
       dockerfile: .build/Dockerfile
+      network: host
       args:
         USER_NAME: ${USER_NAME}
         UID: ${CURRENT_UID}

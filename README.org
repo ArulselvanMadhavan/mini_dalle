@@ -10,8 +10,8 @@ This work is a port of the [[https://github.com/kuprel/min-dalle][python version
 #+begin_src bash
 # Sets up a docker container with everything installed.
 make mini-dalle
-# Sets up python deps
-pip3 install -r requirements.txt
+# set Opam env
+eval $(opam env)
 # Runs the mini dalle image generation steps
 dune exec mini_dalle -- generate "cactus in a corn field" "cactus.png" --device=1
 #+end_src
