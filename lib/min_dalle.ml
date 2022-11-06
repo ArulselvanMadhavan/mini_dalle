@@ -22,8 +22,8 @@ type t =
   ; decoder_params_path : string
   ; detoker_params_path : string
   ; tokenizer : Text_tokenizer.t (* Mutable? *)
-  ; bart_encoder : Dalle_bart_encoder.t option
-  ; bart_decoder : Dalle_bart_decoder.t option
+  ; mutable bart_encoder : Dalle_bart_encoder.t option
+  ; mutable bart_decoder : Dalle_bart_decoder.t option
   ; detokenizer : Vqgan_detokenizer.t option
   }
 
@@ -170,17 +170,16 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.
   let* tokenizer = init_tokenizer is_verbose is_mega vocab_path merges_path in
   let+ bart_encoder =
     let+ _ = download_encoder vs is_verbose is_mega encoder_params_path in
-    None
-    (* Some *)
-    (*   (Dalle_bart_encoder.make *)
-    (*      ~layer_count *)
-    (*      ~embed_count *)
-    (*      ~attention_head_count *)
-    (*      ~text_vocab_count *)
-    (*      ~text_token_count *)
-    (*      ~glu_embed_count *)
-    (*      ~vs *)
-    (*      ~device) *)
+    Some
+      (Dalle_bart_encoder.make
+         ~layer_count
+         ~embed_count
+         ~attention_head_count
+         ~text_vocab_count
+         ~text_token_count
+         ~glu_embed_count
+         ~vs
+         ~device)
   in
   let _vs = Torch.Var_store.create ~name:"decoder" ~device ~frozen:true () in
   let bart_decoder =
@@ -246,8 +245,6 @@ let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
   m
 ;;
 
-let rm_bart_encoder t = { t with bart_encoder = None }
-let rm_bart_decoder t = { t with bart_decoder = None }
 let rm_detokenizer t = { t with detokenizer = None }
 
 let generate_raw_image_stream
@@ -299,7 +296,7 @@ let generate_raw_image_stream
   let encoder_state =
     Dalle_bart_encoder.forward (Option.get t.bart_encoder) ~text_tokens
   in
-  let t = rm_bart_encoder t in
+  t.bart_encoder <- None;
   Caml.Gc.full_major ();
   (* Torch.Serialize.save encoder_state ~filename:"encoder_state.ot"; *)
   let expanded_indices =
@@ -369,7 +366,7 @@ let generate_raw_image_stream
            ~accumulate:false;
     attention_state := attention_state_0
   done;
-  let t = rm_bart_decoder t in
+  t.bart_decoder <- None;
   Caml.Gc.full_major ();
   let image_tokens =
     Tensor.slice !image_tokens ~dim:1 ~start:(Some 1) ~end_:None ~step:1
