@@ -11,8 +11,6 @@ type t =
   ; layer_count : int
   ; text_token_count : int
   ; embed_count : int
-  ; vocab_path : string
-  ; merges_path : string
   ; tokenizer : Text_tokenizer.t (* Mutable? *)
   ; mutable bart_encoder : Dalle_bart_encoder.t option
   ; mutable bart_decoder : Dalle_bart_decoder.t option
@@ -227,8 +225,6 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.
   ; layer_count
   ; text_token_count
   ; embed_count
-  ; vocab_path
-  ; merges_path
   ; tokenizer
   ; bart_encoder
   ; bart_decoder
