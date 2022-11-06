@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torchvision
 from min_dalle.models import DalleBartEncoder
-
+import os
 # encoder = DalleBartEncoder(
 #             attention_head_count = self.attention_head_count,
 #             embed_count = self.embed_count,
