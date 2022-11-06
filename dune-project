@@ -21,7 +21,7 @@
  (description "Mini Dalle in OCaml")
  (tags
   (topics "deep learning" "machine learning" "torch" "dalle"))
- (depends ocaml dune base npy torch yojson uutf cohttp-lwt-unix ppx_yojson_conv)
+ (depends ocaml dune base npy torch yojson uutf cohttp-lwt-unix ppx_yojson_conv cmdliner)
  (depopts utop))
 
 ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project

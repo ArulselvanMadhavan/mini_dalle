@@ -19,6 +19,7 @@ depends: [
   "uutf"
   "cohttp-lwt-unix"
   "ppx_yojson_conv"
+  "cmdliner"
   "odoc" {with-doc}
 ]
 depopts: ["utop"]
