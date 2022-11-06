@@ -1,4 +1,4 @@
-FROM nvidia/cuda:10.2-devel-ubuntu22.04
+FROM nvidia/cuda:11.7-devel-ubuntu22.04
 
 ARG USER_NAME
 ARG UID
