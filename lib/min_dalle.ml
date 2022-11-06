@@ -143,7 +143,7 @@ let fetch_file file_type is_verbose is_mega pt_path =
     ^ " is not reachable. Resp code:"
     ^ Int.to_string code
   else (
-    let cmd = "python scripts/export_" ^ file_type ^ ".py" in
+    let cmd = "python3 scripts/export_" ^ file_type ^ ".py" in
     let result = Sys.command cmd in
     if result == 0
     then Lwt.return (generate_ot file_type pt_path)
