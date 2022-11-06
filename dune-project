@@ -5,22 +5,33 @@
 (generate_opam_files true)
 
 (source
- (github username/reponame))
+ (github ArulselvanMadhavan/mini_dalle))
 
-(authors "Author Name")
+(authors "Arulselvan Madhavan")
 
-(maintainers "Maintainer Name")
+(maintainers "Arulselvan Madhavan")
 
-(license LICENSE)
+(license Apache License 2.0)
 
-(documentation https://url/to/documentation)
+(documentation https://github.com/ArulselvanMadhavan/mini_dalle/README.org)
 
 (package
  (name mini_dalle)
- (synopsis "A short synopsis")
- (description "A longer description")
+ (synopsis "Mini Dalle in OCaml")
+ (description "Mini Dalle in OCaml")
  (depends ocaml dune)
  (tags
-  (topics "to describe" your project)))
+  (topics "deep learning"))
+ (depends
+  (ocaml (>= 4.14.0))
+  (ocamlfind :build)
+  (torch)
+  (npy)
+  (base)
+  (cohttp-lwt-unix)
+  (yojson)
+  (uutf)
+  (ppx_yojson_conv))
+ (depopts utop))
 
 ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project

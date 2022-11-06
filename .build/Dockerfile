@@ -1,4 +1,4 @@
-FROM nvidia/cuda:10.2-devel-ubuntu18.04
+FROM nvidia/cuda:10.2-devel-ubuntu22.04
 
 ARG USER_NAME
 ARG UID
@@ -6,7 +6,10 @@ ARG GID
 ARG OCAML_COMPILER
 USER root
 
-RUN apt-get update && apt-get install -y sudo git inotify-tools build-essential libssl-dev liblapacke-dev libopenblas-dev pkg-config zlib1g-dev libffi-dev libgmp-dev libpcre3-dev tmux fish software-properties-common wget netbase python
+RUN apt-get update && apt-get install -y sudo git inotify-tools build-essential libssl-dev liblapacke-dev libopenblas-dev pkg-config zlib1g-dev libffi-dev libgmp-dev libpcre3-dev tmux fish software-properties-common wget netbase
+RUN apt-get update && \
+    apt-get install --no-install-recommends -y \
+    python3.9 python3-pip python3.9-dev
 RUN add-apt-repository ppa:avsm/ppa
 RUN apt update
 RUN apt install -y opam
