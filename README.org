@@ -1,27 +1,15 @@
 * Mini-Dalle
 ** How to run
-* Download CUDA libtroch
+- Sets up a docker container with everything installed.
 #+begin_src bash
-wget --no-check-certificate https://download.pytorch.org/libtorch/cu102/libtorch-cxx11-abi-shared-with-deps-1.12.0%2Bcu102.zip
+make mini-dalle
+dune exec mini_dalle -- generate "cactus in a corn field" "cactus.png" --device=1
 #+end_src
-* Install packages
-#+begin_src bash
-opam install -y tls lwt_ssl cohttp-lwt-unix yojson merlin dune ppx_yojson_conv uutf utop
-git clone ocaml-torch
-cd ocaml-torch/
-opam install .
-#+end_src
-* Install ocaml-torch with GPU enabled
-** Check if cuda is available
-   #+begin_src bash
-─( 08:47:12 )─< command 0 >─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────{ counter: 0 }─
-utop # #require "torch.toplevel";;
-─( 08:47:12 )─< command 1 >─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────{ counter: 0 }─
-utop # Torch_toplevel.register_all_pps ();;
-- : unit = ()
-─( 08:47:29 )─< command 2 >─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────{ counter: 0 }─
-utop # open Torch;;
-─( 08:48:25 )─< command 3 >─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────{ counter: 0 }─
-utop # Torch.Cuda.is_available ();;
-- : bool = true
-   #+end_src
+** Performance
+- On Nvidia A100, ocaml version takes 28 seconds to generate 3x3 grid
+  of images wheras the python version takes a full minute to generate
+  the 3x3 grid
+** Generated image
+#+CAPTION: cactus in a corn field
+#+NAME:   fig:cactus.png
+[[./images/cactus.png]]
