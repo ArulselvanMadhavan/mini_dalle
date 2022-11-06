@@ -9,7 +9,7 @@ USER root
 RUN apt-get update && apt-get install -y sudo git inotify-tools build-essential libssl-dev liblapacke-dev libopenblas-dev pkg-config zlib1g-dev libffi-dev libgmp-dev libpcre3-dev tmux fish software-properties-common wget netbase
 
 RUN add-apt-repository -y ppa:deadsnakes/ppa
-RUN apt-get update && apt-get install --no-install-recommends -y python3.9 python3-distutils python3-pip python3-apt
+RUN apt install -y python3.9
 
 RUN add-apt-repository ppa:avsm/ppa
 RUN apt update
