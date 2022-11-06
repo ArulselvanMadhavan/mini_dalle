@@ -22,7 +22,7 @@ text_vocab_count = 50272 if is_mega else 50264
 image_vocab_count = 16415 if is_mega else 16384
 device = "cpu"
 
-params = torch.load("pretrained/dalle_bart_mega/detoker.pt")
+params = torch.load("pretrained/vqgan/detoker.pt")
 
 detoker = VQGanDetokenizer()
 

@@ -1,15 +1,26 @@
 * Mini-Dalle
 This work is a port of the [[https://github.com/kuprel/min-dalle][python version of mini-dalle]] to OCaml
+** How it works
+- In the first run, it downloads the pretrained weights from the HF
+  repo for mini-dalle and saves them in a directory called "pretrained".
+- The weights take up about 7GB of space.
+- Runs inference path using the pretrained weights to produce the image
+- The subsequence runs reuse the existing weights to generate the image.
 ** How to run
-- Sets up a docker container with everything installed.
 #+begin_src bash
+# Sets up a docker container with everything installed.
 make mini-dalle
+# Sets up python deps
+pip3 install -r requirements.txt
+# Runs the mini dalle image generation steps
 dune exec mini_dalle -- generate "cactus in a corn field" "cactus.png" --device=1
 #+end_src
 ** Performance
 - On Nvidia A100, ocaml version takes 28 seconds to generate 3x3 grid
   of images wheras the python version takes around 60 seconds to generate
   the 3x3 grid image
+- On a 12 core Intel CPU, it takes about 10 minutes to generate 3x3
+  grid of images
 ** Generated image
 #+CAPTION: cactus in a corn field
 #+NAME:   fig:cactus.png

@@ -42,5 +42,3 @@ RUN git clone https://github.com/LaurentMazare/ocaml-torch.git
 RUN cd ocaml-torch && opam install -y .
 RUN opam install -y tls lwt_ssl cohttp-lwt-unix yojson merlin dune ppx_yojson_conv uutf utop npy
 WORKDIR ${HOME}/mini-dalle
-RUN pip3 install -r requirements.txt
-RUN make all
