@@ -3,3 +3,4 @@ pretrained/
 data/
 *.pt
 extracts/
+.token

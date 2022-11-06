@@ -4,7 +4,7 @@ synopsis: "Mini Dalle in OCaml"
 description: "Mini Dalle in OCaml"
 maintainer: ["Arulselvan Madhavan"]
 authors: ["Arulselvan Madhavan"]
-license: ["Apache" "License" "2.0"]
+license: "Apache-2.0"
 tags: ["topics" "deep learning" "machine learning" "torch" "dalle"]
 homepage: "https://github.com/ArulselvanMadhavan/mini_dalle"
 doc: "https://github.com/ArulselvanMadhavan/mini_dalle/README.org"
