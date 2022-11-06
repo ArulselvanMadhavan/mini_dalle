@@ -1,12 +1,14 @@
 open Mini_dalle
 
-let run_md _text _output_file device =
+let exec_md text output_file device =
+  let open Lwt.Syntax in
+  let+ m = Min_dalle.make ?device () in
+  Min_dalle.generate_raw_image_stream ~text ~grid_size:3 ~output_file ~seed:(-1) m
+;;
+
+let run_md text output_file device =
   let start = Unix.gettimeofday () in
-  let _device = Option.fold device ~none:Torch.Device.Cpu ~some:(fun i -> Torch.Device.Cuda i) in      
-  (* (\* let m = Min_dalle.make ~device:0 () in *\) *)
-  let m =
-    Min_dalle.fetch_file "detoker" true true "pretrained/dalle_bart_mega/detoker.pt"
-  in
+  let m = exec_md text output_file device in
   let _ = Lwt_main.run m in
   let stop = Unix.gettimeofday () in
   Stdio.printf "Done.%f\n" (stop -. start);
@@ -28,16 +30,12 @@ let () =
       & info [] ~docv:"FILENAME" ~doc:"Output Filename")
   in
   let device =
-    Arg.(value & opt (some int) None & info ["device"] ~docv:"DEVICE" ~doc:"Device Id") in
+    Arg.(value & opt (some int) None & info [ "device" ] ~docv:"DEVICE" ~doc:"Device Id")
+  in
   let doc = "Mini dalle - Text to Image generation" in
   let man = [ `S "DESCRIPTION"; `P "Turn text into image" ] in
   let cmd =
-    ( Term.(
-        const run_md
-        $ text
-        $ fname
-      $ device)
-    , Cmd.info "mini-dalle" ~sdocs:"" ~doc ~man )
+    Term.(const run_md $ text $ fname $ device), Cmd.info "mini-dalle" ~sdocs:"" ~doc ~man
   in
   let default_cmd = Term.(ret (const (`Help (`Pager, None)))) in
   let info =

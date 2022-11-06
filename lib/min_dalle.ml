@@ -242,8 +242,6 @@ let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
   (match Option.value m.dtype ~default:`f32 with
    | `f16 -> print_string "f16"
    | `f32 -> print_string "f32");
-  Printf.printf "%B\n" @@ Torch.Device.is_cuda m.device;
-  List.iter print_string [ m.vocab_path; m.merges_path ];
   List.iter (Printf.printf "%B\n") [ m.is_reusable; m.is_verbose; m.is_mega ];
   m
 ;;
@@ -252,6 +250,7 @@ let generate_raw_image_stream
   ~text
   ~seed
   ~grid_size
+  ~output_file
   ?(is_seamless = false)
   ?(temperature = 1.)
   ?(top_k = 256)
@@ -381,7 +380,7 @@ let generate_raw_image_stream
     Vqgan_detokenizer.forward (Option.get t.detokenizer) ~is_seamless image_tokens
   in
   let images = Tensor.to_dtype images ~dtype:(T Uint8) ~non_blocking:true ~copy:false in
-  Torch_vision.Image.write_image images ~filename:"test.png";
+  Torch_vision.Image.write_image images ~filename:output_file;
   t.detokenizer <- None;
   Caml.Gc.full_major ();
   Stdio.printf "Finished with Detoker\n";

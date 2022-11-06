@@ -17,6 +17,7 @@ val generate_raw_image_stream
   :  text:string
   -> seed:int
   -> grid_size:int
+  -> output_file:string
   -> ?is_seamless:bool
   -> ?temperature:float
   -> ?top_k:int
