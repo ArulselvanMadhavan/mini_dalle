@@ -11,6 +11,7 @@ val make
   -> text_token_count:int
   -> glu_embed_count:int
   -> device:Device.t
+  -> params_path:string
   -> t
 
 val forward : t -> text_tokens:Torch.Tensor.t -> Torch.Tensor.t

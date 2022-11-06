@@ -201,7 +201,8 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.
          ~text_token_count
          ~glu_embed_count
          ~vs
-         ~device)
+         ~device
+         ~params_path:encoder_params_path)
   in
   let vs = Torch.Var_store.create ~name:"decoder" ~device ~frozen:true () in
   let bart_decoder =
@@ -213,10 +214,11 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.
          ~attention_head_count
          ~glu_embed_count
          ~layer_count
-         ~device)
+         ~device
+         ~params_path:decoder_params_path)
   in
   let vs = Torch.Var_store.create ~name:"detoker" ~device ~frozen:true () in
-  let detokenizer = Some (Vqgan_detokenizer.make vs) in
+  let detokenizer = Some (Vqgan_detokenizer.make vs ~params_path:detoker_params_path) in
   { dtype
   ; device
   ; is_mega

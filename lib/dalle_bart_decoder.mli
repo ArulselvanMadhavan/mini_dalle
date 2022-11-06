@@ -10,6 +10,7 @@ val make
   -> glu_embed_count:int
   -> layer_count:int
   -> device:Torch.Device.t
+  -> params_path:string
   -> t
 
 val sample_tokens

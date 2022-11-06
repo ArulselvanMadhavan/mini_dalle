@@ -73,6 +73,7 @@ let make
   ~text_token_count
   ~glu_embed_count
   ~device
+  ~params_path
   =
   let embed_tokens =
     Layer.embeddings
@@ -102,9 +103,7 @@ let make
         ~head_count:attention_head_count
         ~glu_embed_count)
   in
-  Serialize.load_multi_
-    ~named_tensors:(Var_store.all_vars vs)
-    ~filename:"extracts/encodermega/encoder.ot";
+  Serialize.load_multi_ ~named_tensors:(Var_store.all_vars vs) ~filename:params_path;
   Stdio.print_string "**** Encoder Load complete ****\n";
   { embed_tokens; embed_positions; layers; layernorm_embedding; final_ln; pose_tokens }
 ;;

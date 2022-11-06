@@ -200,6 +200,7 @@ let make
   ~glu_embed_count
   ~layer_count
   ~device
+  ~params_path
   =
   List.iter print_int [ attention_head_count; glu_embed_count ];
   let embed_tokens =
@@ -234,11 +235,7 @@ let make
       ~input_dim:embed_count
       (image_vocab_count + 1)
   in
-  Serialize.load_multi_
-    ~named_tensors:(Var_store.all_vars vs)
-    ~filename:"extracts/decodermega/decoder.ot";
-  Stdio.printf "*****Decoder load complete*****\n";
-  (* print_named_tensors (Var_store.all_vars vs); *)
+  Serialize.load_multi_ ~named_tensors:(Var_store.all_vars vs) ~filename:params_path;
   { embed_tokens; embed_positions; layers; layernorm_embedding; final_ln; lm_head }
 ;;
 

@@ -329,7 +329,7 @@ type t =
   ; decoder : Decoder.t
   }
 
-let make vs =
+let make vs ~params_path =
   let vocab_count = Base.Int.pow 2 14 in
   let embed_count = Base.Int.pow 2 8 in
   let embedding =
@@ -347,11 +347,7 @@ let make vs =
       embed_count
   in
   let decoder = Decoder.make Var_store.(vs / "decoder") in
-  (* print_named_tensors (Var_store.all_vars vs); *)
-  Serialize.load_multi_
-    ~named_tensors:(Var_store.all_vars vs)
-    ~filename:"extracts/detokermega/detoker.ot";
-  Stdio.printf "****Detoker complete*****\n";
+  Serialize.load_multi_ ~named_tensors:(Var_store.all_vars vs) ~filename:params_path;
   { embedding; post_quant_conv; decoder }
 ;;
 
