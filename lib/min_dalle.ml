@@ -3,24 +3,16 @@ open Cohttp
 open Lwt
 
 type t =
-  { models_root : string
-  ; dtype : [ `f32 | `f16 ] option
+  { dtype : [ `f32 | `f16 ] option
   ; device : Torch_core.Device.t
   ; is_mega : bool
   ; is_reusable : bool
   ; is_verbose : bool
   ; layer_count : int
   ; text_token_count : int
-  ; attention_head_count : int
   ; embed_count : int
-  ; glu_embed_count : int
-  ; text_vocab_count : int
-  ; image_vocab_count : int
   ; vocab_path : string
   ; merges_path : string
-  ; encoder_params_path : string
-  ; decoder_params_path : string
-  ; detoker_params_path : string
   ; tokenizer : Text_tokenizer.t (* Mutable? *)
   ; mutable bart_encoder : Dalle_bart_encoder.t option
   ; mutable bart_decoder : Dalle_bart_decoder.t option
@@ -195,15 +187,13 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.
   in
   let vs = Torch.Var_store.create ~name:"detoker" ~device ~frozen:true () in
   let detokenizer = Some (Vqgan_detokenizer.make vs) in
-  { models_root
-  ; dtype
+  { dtype
   ; device
   ; is_mega
   ; is_reusable
   ; is_verbose
   ; layer_count
   ; text_token_count
-  ; attention_head_count
   ; embed_count
   ; glu_embed_count
   ; text_vocab_count
@@ -223,18 +213,6 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.
 let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
   let open Lwt.Syntax in
   let+ m = mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () in
-  print_string m.detoker_params_path;
-  print_string m.decoder_params_path;
-  print_string m.encoder_params_path;
-  print_int m.image_vocab_count;
-  print_int m.glu_embed_count;
-  print_int m.embed_count;
-  print_int m.attention_head_count;
-  print_int m.text_token_count;
-  print_int m.layer_count;
-  print_int m.text_vocab_count;
-  Printf.printf "%B\n" m.is_reusable;
-  print_string m.models_root;
   (match Option.value m.dtype ~default:`f32 with
    | `f16 -> print_string "f16"
    | `f32 -> print_string "f32");
@@ -243,8 +221,6 @@ let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
   List.iter (Printf.printf "%B\n") [ m.is_reusable; m.is_verbose; m.is_mega ];
   m
 ;;
-
-(* let rm_detokenizer t = { t with detokenizer = None } *)
 
 let generate_raw_image_stream
   ~text
@@ -379,7 +355,7 @@ let generate_raw_image_stream
     Vqgan_detokenizer.forward (Option.get t.detokenizer) ~is_seamless image_tokens
   in
   let images = Tensor.to_dtype images ~dtype:(T Uint8) ~non_blocking:true ~copy:false in
-  Torch_vision.Image.write_image images ~filename:"test.png";  
+  Torch_vision.Image.write_image images ~filename:"test.png";
   t.detokenizer <- None;
   Caml.Gc.full_major ();
   Stdio.printf "Finished with Detoker\n";
