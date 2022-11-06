@@ -1,4 +1,5 @@
 * Mini-Dalle
+This work is a port of the [[https://github.com/kuprel/min-dalle][python version of mini-dalle]] to OCaml
 ** How to run
 - Sets up a docker container with everything installed.
 #+begin_src bash
