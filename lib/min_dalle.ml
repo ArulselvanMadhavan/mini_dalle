@@ -251,8 +251,6 @@ let generate_raw_image_stream
   t
   =
   let open Torch in
-  List.iter print_int [ top_k; seed; supercondition_factor; Bool.to_int is_seamless ];
-  List.iter print_float [ temperature ];
   let image_count = Base.Int.pow grid_size 2 in
   if t.is_verbose then Stdio.printf "Tokenizing text...\n" else ();
   let tokens = Text_tokenizer.tokenize t.tokenizer ~text ~is_verbose:t.is_verbose in
