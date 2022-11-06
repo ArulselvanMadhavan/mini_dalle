@@ -297,6 +297,8 @@ let generate_raw_image_stream
   in
   t.bart_encoder <- None;
   Caml.Gc.full_major ();
+  Stdio.printf "Finished with Encoder\n";
+  Stdio.Out_channel.flush stdout;
   (* Torch.Serialize.save encoder_state ~filename:"encoder_state.ot"; *)
   let expanded_indices =
     Tensor.concat
@@ -365,6 +367,8 @@ let generate_raw_image_stream
            ~accumulate:false;
     attention_state := attention_state_0
   done;
+  Stdio.printf "Finished with Decoder\n";
+  Stdio.Out_channel.flush stdout;
   t.bart_decoder <- None;
   Caml.Gc.full_major ();
   (* Gen images *)
@@ -376,6 +380,8 @@ let generate_raw_image_stream
   in
   t.detokenizer <- None;
   Caml.Gc.full_major ();
+  Stdio.printf "Finished with Detoker\n";
+  Stdio.Out_channel.flush stdout;
   images
 ;;
 

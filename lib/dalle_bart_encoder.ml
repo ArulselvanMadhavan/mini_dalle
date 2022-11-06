@@ -62,7 +62,6 @@ type t =
   ; layernorm_embedding : Nn.t
   ; final_ln : Nn.t
   ; pose_tokens : Tensor.t
-  ; vs : Var_store.t
   }
 
 let make
@@ -103,21 +102,14 @@ let make
         ~head_count:attention_head_count
         ~glu_embed_count)
   in
-  { embed_tokens
-  ; embed_positions
-  ; layers
-  ; layernorm_embedding
-  ; final_ln
-  ; pose_tokens
-  ; vs
-  }
-;;
-
-let forward t ~text_tokens =
   Serialize.load_multi_
     ~named_tensors:(Var_store.all_vars t.vs)
     ~filename:"extracts/encodermega/encoder.ot";
   Stdio.print_string "**** Encoder Load complete ****\n";
+  { embed_tokens; embed_positions; layers; layernorm_embedding; final_ln; pose_tokens }
+;;
+
+let forward t ~text_tokens =
   let attn_mask = Tensor.not_equal text_tokens (Scalar.i 1) in
   let mask_shp = Tensor.shape attn_mask in
   let attn_mask =
