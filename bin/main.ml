@@ -30,7 +30,8 @@ let () =
       & info [] ~docv:"FILENAME" ~doc:"Output Filename")
   in
   let device =
-    Arg.(value & opt (some int) None & info [ "device" ] ~docv:"DEVICE ID" ~doc:"Device Id")
+    Arg.(
+      value & opt (some int) None & info [ "device" ] ~docv:"DEVICE ID" ~doc:"Device Id")
   in
   let doc = "generate image from text" in
   let man = [ `S "DESCRIPTION"; `P "Turn text into image" ] in
