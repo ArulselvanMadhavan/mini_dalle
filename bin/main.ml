@@ -1,7 +1,8 @@
 open Mini_dalle
 
-let run_md _text _output_file =
+let run_md _text _output_file device =
   let start = Unix.gettimeofday () in
+  let _device = Option.fold device ~none:Torch.Device.Cpu ~some:(fun i -> Torch.Device.Cuda i) in      
   (* (\* let m = Min_dalle.make ~device:0 () in *\) *)
   let m =
     Min_dalle.fetch_file "detoker" true true "pretrained/dalle_bart_mega/detoker.pt"
@@ -26,13 +27,16 @@ let () =
       & pos 1 (some string) None
       & info [] ~docv:"FILENAME" ~doc:"Output Filename")
   in
+  let device =
+    Arg.(value & opt (some int) None & info ["device"] ~docv:"DEVICE" ~doc:"Device Id") in
   let doc = "Mini dalle - Text to Image generation" in
   let man = [ `S "DESCRIPTION"; `P "Turn text into image" ] in
   let cmd =
     ( Term.(
         const run_md
         $ text
-        $ fname)
+        $ fname
+      $ device)
     , Cmd.info "mini-dalle" ~sdocs:"" ~doc ~man )
   in
   let default_cmd = Term.(ret (const (`Help (`Pager, None)))) in
