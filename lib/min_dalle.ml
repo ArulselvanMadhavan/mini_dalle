@@ -364,7 +364,7 @@ let generate_raw_image_stream
     image_tokens
       := Tensor.index_put_
            !image_tokens
-           ~indices:[ None; Some (Tensor.of_int0 i) ]
+           ~indices:[ None; Some (Tensor.of_int0 (i + 1)) ]
            ~values:image_token
            ~accumulate:false;
     attention_state := attention_state_0
@@ -392,6 +392,9 @@ let image_grid_from_tokens t =
   let images =
     Vqgan_detokenizer.forward (Option.get t.detokenizer) ~is_seamless:false image_tokens
   in
+  let images = Tensor.to_dtype images ~dtype:(T Uint8) ~non_blocking:true ~copy:false in
+  Torch_vision.Image.write_image images ~filename:"test.png";
+  (* Torch_vision.Image.write_image *)
   Stdio.printf "Image_shape:%s\n" (Tensor.shape_str images);
   ()
 ;;
