@@ -349,7 +349,7 @@ let make vs =
   let decoder = Decoder.make Var_store.(vs / "decoder") in
   (* print_named_tensors (Var_store.all_vars vs); *)
   Serialize.load_multi_
-    ~named_tensors:(Var_store.all_vars t.vs)
+    ~named_tensors:(Var_store.all_vars vs)
     ~filename:"extracts/detokermega/detoker.ot";
   Stdio.printf "****Detoker complete*****\n";
   { embedding; post_quant_conv; decoder }
