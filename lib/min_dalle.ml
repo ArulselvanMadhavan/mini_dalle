@@ -5,8 +5,6 @@ open Lwt
 type t =
   { dtype : [ `f32 | `f16 ] option
   ; device : Torch_core.Device.t
-  ; is_mega : bool
-  ; is_reusable : bool
   ; is_verbose : bool
   ; layer_count : int
   ; text_token_count : int
@@ -159,7 +157,7 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.
   let open Lwt.Syntax in
   let is_mega = Option.value is_mega ~default:true in
   let is_verbose = Option.value is_verbose ~default:true in
-  let is_reusable = Option.value is_reusable ~default:true in
+  let _is_reusable = Option.value is_reusable ~default:true in
   let layer_count = if is_mega then 24 else 12 in
   let text_token_count = 64 in
   let attention_head_count = if is_mega then 32 else 16 in
@@ -221,8 +219,6 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.
   in
   { dtype
   ; device
-  ; is_mega
-  ; is_reusable
   ; is_verbose
   ; layer_count
   ; text_token_count
@@ -240,7 +236,6 @@ let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
   (match Option.value m.dtype ~default:`f32 with
    | `f16 -> print_string "f16"
    | `f32 -> print_string "f32");
-  List.iter (Printf.printf "%B\n") [ m.is_reusable; m.is_verbose; m.is_mega ];
   m
 ;;
 
