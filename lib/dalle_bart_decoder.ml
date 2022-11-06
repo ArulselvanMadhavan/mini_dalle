@@ -186,6 +186,7 @@ type t =
   ; layernorm_embedding : Nn.t
   ; final_ln : Nn.t
   ; lm_head : Nn.t
+  ; vs : Var_store.t
   }
 
 (* let print_named_tensors = *)
@@ -235,14 +236,14 @@ let make
       (image_vocab_count + 1)
   in
   (* print_named_tensors (Var_store.all_vars vs); *)
-  (* FIXME *)
-  Serialize.load_multi_
-    ~named_tensors:(Var_store.all_vars vs)
-    ~filename:"extracts/decodermega/decoder.ot";
-  { embed_tokens; embed_positions; layers; layernorm_embedding; final_ln; lm_head }
+  { embed_tokens; embed_positions; layers; layernorm_embedding; final_ln; lm_head; vs }
 ;;
 
 let forward t ~attention_mask ~encoder_state ~attention_state ~prev_tokens ~token_index =
+  Serialize.load_multi_
+    ~named_tensors:(Var_store.all_vars t.vs)
+    ~filename:"extracts/decodermega/decoder.ot";
+  Stdio.printf "*****Decoder load complete*****\n";
   let image_count = Int.div (List.hd (Tensor.shape encoder_state)) 2 in
   let token_index = Tensor.unsqueeze token_index ~dim:0 in
   let token_index = Tensor.repeat token_index ~repeats:[ image_count * 2; 1 ] in

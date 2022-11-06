@@ -24,7 +24,7 @@ type t =
   ; tokenizer : Text_tokenizer.t (* Mutable? *)
   ; mutable bart_encoder : Dalle_bart_encoder.t option
   ; mutable bart_decoder : Dalle_bart_decoder.t option
-  ; detokenizer : Vqgan_detokenizer.t option
+  ; mutable detokenizer : Vqgan_detokenizer.t option
   }
 
 type 'a with_config =
@@ -181,20 +181,19 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.
          ~vs
          ~device)
   in
-  let _vs = Torch.Var_store.create ~name:"decoder" ~device ~frozen:true () in
+  let vs = Torch.Var_store.create ~name:"decoder" ~device ~frozen:true () in
   let bart_decoder =
-    None
-    (* Some *)
-    (*   (Dalle_bart_decoder.make *)
-    (*      vs *)
-    (*      ~image_vocab_count *)
-    (*      ~embed_count *)
-    (*      ~attention_head_count *)
-    (*      ~glu_embed_count *)
-    (*      ~layer_count *)
-    (*      ~device) *)
+    Some
+      (Dalle_bart_decoder.make
+         vs
+         ~image_vocab_count
+         ~embed_count
+         ~attention_head_count
+         ~glu_embed_count
+         ~layer_count
+         ~device)
   in
-  let _vs = Torch.Var_store.create ~name:"detoker" ~device ~frozen:true () in
+  let vs = Torch.Var_store.create ~name:"detoker" ~device ~frozen:true () in
   let detokenizer = Some (Vqgan_detokenizer.make vs) in
   { models_root
   ; dtype
@@ -374,7 +373,6 @@ let generate_raw_image_stream
   let images =
     Vqgan_detokenizer.forward (Option.get t.detokenizer) ~is_seamless image_tokens
   in
-  let _ = rm_detokenizer t in
   Caml.Gc.full_major ();
   images
 ;;
