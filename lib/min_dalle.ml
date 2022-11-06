@@ -244,7 +244,7 @@ let make ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () =
   m
 ;;
 
-let rm_detokenizer t = { t with detokenizer = None }
+(* let rm_detokenizer t = { t with detokenizer = None } *)
 
 let generate_raw_image_stream
   ~text
@@ -367,6 +367,7 @@ let generate_raw_image_stream
   done;
   t.bart_decoder <- None;
   Caml.Gc.full_major ();
+  (* Gen images *)
   let image_tokens =
     Tensor.slice !image_tokens ~dim:1 ~start:(Some 1) ~end_:None ~step:1
   in

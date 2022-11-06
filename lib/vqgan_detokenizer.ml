@@ -319,8 +319,8 @@ module Decoder = struct
   ;;
 end
 
-let print_named_tensors xs =
-  List.iteri (fun i (name, t) -> Stdio.printf "%d)%s|%s\n" i name (Tensor.shape_str t)) xs
+(* let print_named_tensors xs = *)
+(*   List.iteri (fun i (name, t) -> Stdio.printf "%d)%s|%s\n" i name (Tensor.shape_str t)) xs *)
 ;;
 
 (* VQGAN *)
