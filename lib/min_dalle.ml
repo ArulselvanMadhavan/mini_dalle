@@ -111,23 +111,50 @@ let init_tokenizer is_verbose is_mega vocab_path merges_path =
     Text_tokenizer.make vocab merges
 ;;
 
-let fetch_encoder is_verbose is_mega encoder_path =
-  let open Lwt.Syntax in
-  let _ = if is_verbose then print_string "Downloading encoder\n" else () in
-  let suffix = if is_mega then "" else "_mini" in
-  let uri = Uri.of_string @@ min_dalle_repo ^ "encoder" ^ suffix ^ ".pt" in
-  let* resp, body = Lwthttp.http_get_and_follow uri encoder_path in
-  let code = resp |> Response.status |> Code.code_of_status in
-  if code != 200
-  then Lwt.fail_with @@ "HF Encoder is not reachable. Resp code:" ^ Int.to_string code
-  else
-    let* out_ch = Lwt_io.open_file encoder_path ~mode:Lwt_io.Output in
-    Cohttp_lwt.Body.write_body (fun body -> Lwt_io.write out_ch body) body
+let rename_pt_to_ot pt_path =
+  let ot_path = Base.String.drop_suffix pt_path 2 in
+  ot_path ^ "ot"
 ;;
 
-let download_encoder _frozen_vs is_verbose is_mega encoder_path =
-  let is_downloaded = Sys.file_exists encoder_path in
-  if is_downloaded then Lwt.return () else fetch_encoder is_verbose is_mega encoder_path
+let generate_ot file_type pt_path =
+  let extracts_dir = "extracts/" ^ file_type ^ "mega/" in
+  let filename = file_type ^ ".ot" in
+  Serialize.serialize_model extracts_dir filename;
+  let ot_path = rename_pt_to_ot pt_path in
+  let cmd = "mv " ^ extracts_dir ^ filename ^ " " ^ ot_path in
+  let _ = Sys.command cmd in
+  let cmd = "rm -rf " ^ extracts_dir in
+  let _ = Sys.command cmd in
+  let cmd = "rm -rf " ^ pt_path in
+  let _ = Sys.command cmd in
+  ()
+;;
+
+let fetch_file file_type is_verbose is_mega pt_path =
+  let open Lwt.Syntax in
+  let _ = if is_verbose then print_string ("Downloading " ^ file_type ^ "\n") else () in
+  let suffix = if is_mega then "" else "_mini" in
+  let uri = Uri.of_string @@ min_dalle_repo ^ file_type ^ suffix ^ ".pt" in
+  let* resp, _ = Lwthttp.http_get_and_follow uri pt_path in
+  let code = resp |> Response.status |> Code.code_of_status in
+  if code != 200
+  then
+    Lwt.fail_with
+    @@ "HF"
+    ^ file_type
+    ^ " is not reachable. Resp code:"
+    ^ Int.to_string code
+  else (
+    let cmd = "python scripts/export_" ^ file_type ^ ".py" in
+    let result = Sys.command cmd in
+    if result == 0
+    then Lwt.return (generate_ot file_type pt_path)
+    else Lwt.fail_with (file_type ^ " extract pt to npy failed"))
+;;
+
+let download_file file_type is_verbose is_mega pt_path =
+  let is_downloaded = Sys.file_exists (rename_pt_to_ot pt_path) in
+  if is_downloaded then Lwt.return () else fetch_file file_type is_verbose is_mega pt_path
 ;;
 
 let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.t =
@@ -158,10 +185,13 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.
       ~some:(fun i -> Torch_core.Device.Cuda i)
       device
   in
-  let vs = Torch.Var_store.create ~name:"encoder" ~device ~frozen:true () in
   let* tokenizer = init_tokenizer is_verbose is_mega vocab_path merges_path in
-  let+ bart_encoder =
-    let+ _ = download_encoder vs is_verbose is_mega encoder_params_path in
+  let encoder_lwt = download_file "encoder" is_verbose is_mega encoder_params_path in
+  let decoder_lwt = download_file "decoder" is_verbose is_mega decoder_params_path in
+  let detoker_lwt = download_file "detoker" is_verbose is_mega detoker_params_path in
+  let+ _ = Lwt.all [ encoder_lwt; decoder_lwt; detoker_lwt ] in
+  let vs = Torch.Var_store.create ~name:"encoder" ~device ~frozen:true () in
+  let bart_encoder =
     Some
       (Dalle_bart_encoder.make
          ~layer_count
@@ -195,14 +225,8 @@ let mk ?models_root ?dtype ?device ?is_mega ?is_reusable ?is_verbose () : t Lwt.
   ; layer_count
   ; text_token_count
   ; embed_count
-  ; glu_embed_count
-  ; text_vocab_count
-  ; image_vocab_count
   ; vocab_path
   ; merges_path
-  ; encoder_params_path
-  ; decoder_params_path
-  ; detoker_params_path
   ; tokenizer
   ; bart_encoder
   ; bart_decoder

@@ -1,36 +1,5 @@
 (* open Base *)
-open! Torch
-
-let read_npy dir_path name =
-  match Npy.read_copy (dir_path ^ "/" ^ name) with
-  | Npy.P tensor ->
-    (match Bigarray.Genarray.layout tensor with
-     | Bigarray.C_layout ->
-       Filename.remove_extension name, Torch.Tensor.of_bigarray tensor
-     | Bigarray.Fortran_layout -> failwith "fortran layout not supported")
-;;
-
-let print_named_tensors xs =
-  List.iter (fun (name, t) -> Stdio.printf "%s|%s\n" name @@ Tensor.shape_str t) xs
-;;
-
-let load_model dir_path filename =
-  let vs = Var_store.create ~name:"min-dalle" () in
-  let _final_embed = Layer.layer_norm Var_store.(vs / "layers" // 0) 2048 in
-  let named_tensors = Var_store.all_vars vs in
-  print_named_tensors named_tensors;
-  Serialize.load_multi_ ~named_tensors ~filename:(dir_path ^ "/" ^ filename)
-;;
-
-let serialize_model dir_path filename =
-  let named_tensors =
-    Sys.readdir dir_path
-    |> Array.to_list
-    |> List.filter (fun x -> Filename.extension x = ".npy")
-    |> List.map (read_npy dir_path)
-  in
-  Torch.Serialize.save_multi ~named_tensors ~filename:(dir_path ^ "/" ^ filename)
-;;
+open Mini_dalle
 
 let load_cmd =
   let open Cmdliner in
@@ -45,7 +14,8 @@ let load_cmd =
   in
   let doc = "Load npy files to ot" in
   let man = [ `S "DESCRIPTION"; `P "Convert a npy file to ot file" ] in
-  Term.(const load_model $ dir_path $ fname), Cmd.info "load" ~sdocs:"" ~doc ~man
+  ( Term.(const Serialize.load_model $ dir_path $ fname)
+  , Cmd.info "load" ~sdocs:"" ~doc ~man )
 ;;
 
 let () =
@@ -62,7 +32,7 @@ let () =
     in
     let doc = "Serialize npy files to ot" in
     let man = [ `S "DESCRIPTION"; `P "Convert a npy file to ot file" ] in
-    ( Term.(const serialize_model $ dir_path $ fname)
+    ( Term.(const Serialize.serialize_model $ dir_path $ fname)
     , Cmd.info "serialize" ~sdocs:"" ~doc ~man )
   in
   let default_cmd = Term.(ret (const (`Help (`Pager, None)))) in
