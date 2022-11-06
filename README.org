@@ -8,8 +8,8 @@ dune exec mini_dalle -- generate "cactus in a corn field" "cactus.png" --device=
 #+end_src
 ** Performance
 - On Nvidia A100, ocaml version takes 28 seconds to generate 3x3 grid
-  of images wheras the python version takes a full minute to generate
-  the 3x3 grid
+  of images wheras the python version takes around 60 seconds to generate
+  the 3x3 grid image
 ** Generated image
 #+CAPTION: cactus in a corn field
 #+NAME:   fig:cactus.png
