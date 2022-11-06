@@ -6,6 +6,7 @@ ARG GID
 ARG OCAML_COMPILER
 USER root
 
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y sudo git inotify-tools build-essential libssl-dev liblapacke-dev libopenblas-dev pkg-config zlib1g-dev libffi-dev libgmp-dev libpcre3-dev tmux fish software-properties-common wget netbase
 
 RUN add-apt-repository -y ppa:deadsnakes/ppa
