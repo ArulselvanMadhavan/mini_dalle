@@ -378,6 +378,8 @@ let generate_raw_image_stream
   let images =
     Vqgan_detokenizer.forward (Option.get t.detokenizer) ~is_seamless image_tokens
   in
+  let images = Tensor.to_dtype images ~dtype:(T Uint8) ~non_blocking:true ~copy:false in
+  Torch_vision.Image.write_image images ~filename:"test.png";  
   t.detokenizer <- None;
   Caml.Gc.full_major ();
   Stdio.printf "Finished with Detoker\n";
