@@ -19,19 +19,9 @@
  (name mini_dalle)
  (synopsis "Mini Dalle in OCaml")
  (description "Mini Dalle in OCaml")
- (depends ocaml dune)
  (tags
-  (topics "deep learning"))
- (depends
-  (ocaml (>= 4.14.0))
-  (ocamlfind :build)
-  (torch)
-  (npy)
-  (base)
-  (cohttp-lwt-unix)
-  (yojson)
-  (uutf)
-  (ppx_yojson_conv))
+  (topics "deep learning" "machine learning" "torch" "dalle"))
+ (depends ocaml dune base npy torch yojson uutf cohttp-lwt-unix ppx_yojson_conv)
  (depopts utop))
 
 ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project
