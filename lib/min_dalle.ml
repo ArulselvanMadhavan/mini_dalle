@@ -388,23 +388,3 @@ let generate_raw_image_stream
   Stdio.Out_channel.flush stdout;
   images
 ;;
-
-let image_grid_from_tokens t =
-  let open Torch in
-  let image_tokens = Serialize.load ~filename:"image_tokens.ot" in
-  let image_tokens =
-    Tensor.slice ~dim:1 ~start:(Some 1) ~end_:None ~step:1 image_tokens
-  in
-  let image_tokens = Tensor.to_device ~device:t.device image_tokens in
-  let images =
-    Vqgan_detokenizer.forward (Option.get t.detokenizer) ~is_seamless:false image_tokens
-  in
-  let images = Tensor.to_dtype images ~dtype:(T Uint8) ~non_blocking:true ~copy:false in
-  Torch_vision.Image.write_image images ~filename:"test.png";
-  (* Torch_vision.Image.write_image *)
-  Stdio.printf "Image_shape:%s\n" (Tensor.shape_str images);
-  ()
-;;
-(* let test_vqgan t = Torch.Serialize.load_multi_ *)
-(* Serialize.save !image_tokens ~filename:"image_tokens.ot"; *)
-(* Serialize.save !attention_state ~filename:"attention_state.ot"; *)
