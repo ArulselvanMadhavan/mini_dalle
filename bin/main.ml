@@ -30,7 +30,7 @@ let () =
       & info [] ~docv:"FILENAME" ~doc:"Output Filename")
   in
   let device =
-    Arg.(value & opt (some int) None & info [ "device" ] ~docv:"DEVICE" ~doc:"Device Id")
+    Arg.(value & opt (some int) None & info [ "device" ] ~docv:"DEVICE ID" ~doc:"Device Id")
   in
   let doc = "Mini dalle - Text to Image generation" in
   let man = [ `S "DESCRIPTION"; `P "Turn text into image" ] in
