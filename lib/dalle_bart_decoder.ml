@@ -237,7 +237,7 @@ let make
   Serialize.load_multi_
     ~named_tensors:(Var_store.all_vars vs)
     ~filename:"extracts/decodermega/decoder.ot";
-  Stdio.printf "*****Decoder load complete*****\n";  
+  Stdio.printf "*****Decoder load complete*****\n";
   (* print_named_tensors (Var_store.all_vars vs); *)
   { embed_tokens; embed_positions; layers; layernorm_embedding; final_ln; lm_head }
 ;;
