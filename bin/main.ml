@@ -32,10 +32,10 @@ let () =
   let device =
     Arg.(value & opt (some int) None & info [ "device" ] ~docv:"DEVICE ID" ~doc:"Device Id")
   in
-  let doc = "Mini dalle - Text to Image generation" in
+  let doc = "generate image from text" in
   let man = [ `S "DESCRIPTION"; `P "Turn text into image" ] in
   let cmd =
-    Term.(const run_md $ text $ fname $ device), Cmd.info "mini-dalle" ~sdocs:"" ~doc ~man
+    Term.(const run_md $ text $ fname $ device), Cmd.info "generate" ~sdocs:"" ~doc ~man
   in
   let default_cmd = Term.(ret (const (`Help (`Pager, None)))) in
   let info =
@@ -46,16 +46,3 @@ let () =
   let main_cmd = Cmd.group info ~default:default_cmd cmds in
   Cmd.eval main_cmd |> Caml.exit
 ;;
-(* (\* let m = Min_dalle.fetch_file "encoder" true true "pretrained/dalle_bart_mega/encoder.pt" in *\) *)
-(* let m = *)
-
-(* in *)
-
-(* (\* let _ = *\) *)
-(* (\*   Min_dalle.generate_raw_image_stream *\) *)
-(* (\*     ~text:"cactus in a corn field" *\) *)
-(* (\*     ~seed:42 *\) *)
-(* (\*     ~grid_size:3 *\) *)
-(* (\*     m *\) *)
-(* (\* in *\) *)
-(* (\* let _ = Min_dalle.image_grid_from_tokens m in *\) *)
